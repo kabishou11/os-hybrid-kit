@@ -4,7 +4,14 @@ import os
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
 
 class FusionMethod(str, Enum):
@@ -63,6 +70,13 @@ class HybridConfig(BaseModel):
     size: int = Field(default=10, ge=1)
     knn_k: int = Field(default=10, ge=1)
     exclude_vector: bool = True
+
+    @field_validator("index", "pipeline_name")
+    @classmethod
+    def _reject_blank_name(cls, value: str, info: ValidationInfo) -> str:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{info.field_name} must be a non-empty string")
+        return value
 
     @model_validator(mode="after")
     def _validate_fusion_weights(self) -> HybridConfig:

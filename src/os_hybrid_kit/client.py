@@ -20,6 +20,14 @@ def _require_nonempty(value: str, label: str) -> str:
     return value
 
 
+class AliasNotFoundError(ValueError):
+    """Raised when ``get_alias`` or ``delete_alias`` targets a missing alias."""
+
+    def __init__(self, alias: str) -> None:
+        self.alias = alias
+        super().__init__(f"alias {alias!r} was not found")
+
+
 def build_opensearch_client(config: HybridConfig) -> OpenSearch:
     kwargs: dict[str, Any] = {
         "hosts": list(config.hosts),
@@ -115,14 +123,28 @@ class HybridKit:
         return self.client.indices.put_alias(index=self._target_index(index), name=alias)
 
     def delete_alias(self, alias: str, *, index: str | None = None) -> Any:
-        """Remove ``alias`` from ``index`` (default ``config.index``)."""
+        """Remove ``alias`` from ``index`` (default ``config.index``).
+
+        Raises ``AliasNotFoundError`` if the alias is not on that index.
+        """
         _require_nonempty(alias, "alias")
-        return self.client.indices.delete_alias(index=self._target_index(index), name=alias)
+        try:
+            return self.client.indices.delete_alias(
+                index=self._target_index(index), name=alias
+            )
+        except NotFoundError as exc:
+            raise AliasNotFoundError(alias) from exc
 
     def get_alias(self, alias: str) -> dict[str, Any]:
-        """Resolve ``alias`` to OpenSearch's ``{index: {"aliases": {alias: ...}}}`` mapping."""
+        """Resolve ``alias`` to OpenSearch's ``{index: {"aliases": {alias: ...}}}`` mapping.
+
+        Raises ``AliasNotFoundError`` if the alias does not exist.
+        """
         _require_nonempty(alias, "alias")
-        return dict(self.client.indices.get_alias(name=alias))
+        try:
+            return dict(self.client.indices.get_alias(name=alias))
+        except NotFoundError as exc:
+            raise AliasNotFoundError(alias) from exc
 
     def swap_alias(
         self,
@@ -148,7 +170,7 @@ class HybridKit:
         else:
             try:
                 mapping = self.get_alias(alias)
-            except NotFoundError:
+            except AliasNotFoundError:
                 mapping = {}
             for name in mapping:
                 if name != new_index:

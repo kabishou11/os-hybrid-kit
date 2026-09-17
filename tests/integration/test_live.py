@@ -95,3 +95,41 @@ def test_put_and_get_alias_then_search_via_alias(live_kit: HybridKit):
     assert result.hits
     assert result.hits[0].id == "1"
     live_kit.delete_alias(alias)
+
+
+def test_swap_alias_blue_green_cutover_and_search(live_kit: HybridKit):
+    alias = "os-hybrid-kit-itest-read"
+    green_name = "os-hybrid-kit-itest-green"
+    blue_name = live_kit.config.index
+    green = live_kit.with_index(green_name)
+    green.delete_index()
+    try:
+        live_kit.put_alias(alias)
+        green.ensure_index(
+            extra_properties={
+                "title": {"type": "text"},
+                "category": {"type": "keyword"},
+            }
+        )
+        green.index_documents(
+            [
+                {
+                    "_id": "g1",
+                    "title": "green",
+                    "content": "waterproof trail boots",
+                    "category": "footwear",
+                    "embedding": [1.0, 0.0],
+                }
+            ]
+        )
+        live_kit.swap_alias(alias, green_name, old_index=blue_name)
+        mapping = live_kit.get_alias(alias)
+        assert list(mapping) == [green_name]
+        aliased = live_kit.with_index(alias)
+        result = aliased.lexical_search("waterproof trail boots", size=2)
+        assert result.hits
+        assert result.hits[0].id == "g1"
+        chair = aliased.lexical_search("office chair", size=2)
+        assert all(hit.id != "2" for hit in chair.hits)
+    finally:
+        green.delete_index()

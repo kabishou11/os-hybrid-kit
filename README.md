@@ -5,7 +5,7 @@ Portable Python library for **OpenSearch hybrid search**: BM25 lexical match plu
 [![CI](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**v0.5.2** — facade frozen; 0.5.x is polish and hardening. You bring the embedding model; the kit builds the mapping, upserts the search pipeline, and runs hybrid search.
+**v0.5.3** — facade frozen; 0.5.x is polish and hardening. You bring the embedding model; the kit builds the mapping, upserts the search pipeline, and runs hybrid search.
 
 [CHANGELOG](CHANGELOG.md) · [Production checklist](docs/PRODUCTION.md) · [Relevance and latency notes](docs/NOTES.md) · [Integrations](docs/INTEGRATIONS.md) · [Roadmap](ROADMAP.md)
 
@@ -111,6 +111,8 @@ from os_hybrid_kit import (
 
 `config.index` is the OpenSearch target for mapping, bulk, and search. It may be a **concrete index** or an **alias**. Pointing reads at an alias lets you rebuild a new index and cut over without changing query code.
 
+Create the concrete index first (`ensure_index`). Attach an alias with `put_alias` / `swap_alias`, then read through it with `with_index`. Do not call `ensure_index` on an alias name: if the alias is missing, OpenSearch may create a concrete index of that name.
+
 ```python
 kit = HybridKit(config)  # config.index == "docs-v1"
 kit.ensure_index()
@@ -123,7 +125,7 @@ blue.index_documents([...])
 kit.swap_alias("docs-read", "docs-v2", old_index="docs-v1")
 ```
 
-`swap_alias` issues one `_aliases` request (remove old + add new) when `old_index` is passed. If `old_index` is omitted, the kit looks up current targets first, then updates. This is not a full index-management product: no `is_write_index` policy, no ILM.
+`swap_alias` issues one `_aliases` request (remove old + add new) when `old_index` is passed. If `old_index` is omitted, the kit looks up current targets first, then updates. A missing alias raises `AliasNotFoundError` (`ValueError`) from `get_alias` / `delete_alias`; `swap_alias` still adds when the alias is missing. This is not a full index-management product: no `is_write_index` policy, no ILM.
 
 ## Benchmark
 
@@ -208,8 +210,8 @@ python -m pip install -e ".[dev]"
 pytest -m "not integration"   # unit tests; no Docker / live cluster
 # or: make test && make lint
 pytest -m integration         # live cluster; CI sets RUN_INTEGRATION=1
-# optional retrievers:
-python -m pip install -e ".[dev,langchain,llama-index]"
+# retriever tests skip unless extras are installed:
+make test-extras              # pip install -e ".[dev,langchain,llama-index]" then pytest
 ```
 
 Live tests skip unless `RUN_INTEGRATION=1`. Default URL is `OPENSEARCH_URL` or `http://localhost:9200`.

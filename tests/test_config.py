@@ -77,8 +77,20 @@ def test_from_env_requires_dimension_from_env_or_kwargs(
         HybridConfig.from_env()
 
 
+@pytest.mark.parametrize("blank", ["", "  ", "\t"])
+def test_index_rejects_blank(blank: str) -> None:
+    with pytest.raises(ValidationError, match="index must be a non-empty string"):
+        HybridConfig(dimension=2, index=blank)
+
+
+@pytest.mark.parametrize("blank", ["", "  ", "\n"])
+def test_pipeline_name_rejects_blank(blank: str) -> None:
+    with pytest.raises(ValidationError, match="pipeline_name must be a non-empty string"):
+        HybridConfig(dimension=2, pipeline_name=blank)
+
+
 def test_version_and_public_exports() -> None:
-    assert os_hybrid_kit.__version__ == "0.5.2"
+    assert os_hybrid_kit.__version__ == "0.5.3"
     for name in os_hybrid_kit.__all__:
         assert hasattr(os_hybrid_kit, name)
 

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-09-17
+
+Harden and DX polish on the frozen v0.5 facade. No breaking renames.
+
+### Fixed
+
+- `get_alias` / `delete_alias` raise `AliasNotFoundError` (a `ValueError` that names the alias) instead of a raw OpenSearch `NotFoundError`. `swap_alias` still add-only when the alias is missing.
+
+### Changed
+
+- Package version `0.5.3`
+- `HybridConfig` rejects empty or whitespace-only `index` and `pipeline_name` at model validation
+- LangChain `HybridKitRetriever.kit` / `embed_fn` typed as `HybridKit` / `EmbedFn`
+
+### Added
+
+- Live test for `swap_alias` blue/green cutover and search via alias (`RUN_INTEGRATION=1`)
+- `make test-extras` installs `.[dev,langchain,llama-index]` and runs unit tests
+
 ## [0.5.2] - 2026-09-17
 
 Close remaining audit follow-ups on the frozen v0.5 facade. No breaking renames.
@@ -30,6 +49,8 @@ Close remaining audit follow-ups on the frozen v0.5 facade. No breaking renames.
 ## [0.5.1] - 2026-09-17
 
 Validation, docs, and DX polish on the frozen v0.5 facade. No breaking renames.
+
+There is no `v0.5.1` git tag (published tags skip from `v0.5.0` to `v0.5.2`); this version is commit `e6d750b` on `main`.
 
 ### Fixed
 
