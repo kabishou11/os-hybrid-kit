@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "os-hybrid-kit"
+version = "0.2.0"
+description = "Portable OpenSearch hybrid search (BM25 + kNN + RRF / weighted normalization) with a thin Dify adapter."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Zhu Lei", email = "woicyou@gmail.com" }]
+requires-python = ">=3.10"
+keywords = ["opensearch", "hybrid-search", "bm25", "knn", "rrf", "dify"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+    "opensearch-py>=2.6,<4",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+dify = []
+
+[project.urls]
+Homepage = "https://github.com/kabishou11/os-hybrid-kit"
+Issues = "https://github.com/kabishou11/os-hybrid-kit/issues"
+
+[tool.setuptools]
+packages = ["os_hybrid_kit", "adapters", "adapters.dify"]
+
+[tool.setuptools.package-dir]
+os_hybrid_kit = "src/os_hybrid_kit"
+adapters = "adapters"
+
+[tool.setuptools.package-data]
+os_hybrid_kit = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: tests that require a live OpenSearch cluster",
+]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "adapters", "tests", "examples"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+"examples/*" = ["E501"]

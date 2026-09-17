@@ -1,0 +1,54 @@
+# Roadmap
+
+## v0.1
+
+Shipped on `0.1.x`: a small, typed library you can drop into a RAG stack.
+
+- Public facade: `HybridKit`, `HybridConfig`, `FusionMethod`, `Hit`, `SearchResult`
+- Index mapping (`knn_vector` + BM25 text) and search-pipeline upsert (RRF or weighted)
+- `ensure_index` / `exists_index` / `delete_index` / `upsert_pipeline` / `index_documents` / `hybrid_search`
+- `HybridConfig.from_env()` for `OPENSEARCH_URL` / `OPENSEARCH_HOSTS`, `OPENSEARCH_INDEX`, `OPENSEARCH_DIM`
+- Builders for mapping, pipeline, and hybrid query JSON
+- Thin Dify external-knowledge adapter + VDB stub
+- Docker Compose demo (OpenSearch 2.19.6) and unit tests
+
+## v0.2 prove (this)
+
+Shipped on `0.2.0`: the kit against a real OpenSearch, still the same product.
+
+- Live OpenSearch integration tests in CI (`docker compose` + `pytest -m integration`)
+- Documented filter / `_source` examples on the demo corpus
+- A short BM25 vs kNN vs hybrid ranking example (`examples/compare_retrievers.py`)
+- Thin `lexical_search` / `knn_search` on `HybridKit` (no pipeline; hybrid stays the main path)
+- Packaging notes (`pip install` from git; no PyPI release yet)
+
+## v0.3 resume highlight
+
+Make the public API and write-up something you can put on a CV.
+
+- Freeze the v0.1 facade; keep a short changelog
+- Small relevance / latency notes (not a full eval harness)
+- Production checklist: dimension mismatch, pipeline version, RRF vs Dify score threshold
+- Optional: typed protocol for `embed_fn`
+
+## v0.4+ (optional)
+
+Only if a real product needs them.
+
+- LangChain / LlamaIndex retriever extras
+- Dify marketplace plugin packaging
+- Neural Search `neural` query (model hosted in OpenSearch)
+- Multi-index / alias helpers
+- Benchmarks vs BM25-only and kNN-only
+
+## Non-goals
+
+These stay out of this repository unless the scope is rewritten:
+
+- A RAG UI, chat app, or document-ingestion product
+- An MCP skills bridge
+- An evaluation harness or RAGFlow eval kit
+- A LiteLLM / model gateway
+- ColQwen, late-interaction, or multimodal retrieval as core
+- Guardrails or policy enforcement
+- A packaged Dify marketplace plugin as the primary artifact
