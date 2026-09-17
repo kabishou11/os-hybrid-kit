@@ -67,6 +67,14 @@ Shipped on `0.5.2`:
 - Dify VDB vector / full-text search goes through `knn_search` / `lexical_search`
 - Python 3.13 classifier
 
+Shipped on `0.5.3`:
+
+- `get_alias` / `delete_alias` raise `AliasNotFoundError` (names the alias); `swap_alias` still add-only when missing
+- `HybridConfig` rejects empty / whitespace `index` and `pipeline_name`
+- LangChain retriever `kit` / `embed_fn` typed as `HybridKit` / `EmbedFn`
+- Live test for `swap_alias` blue/green cutover
+- `make test-extras` for LangChain / LlamaIndex unit tests
+
 Still optional / unshipped:
 
 - Dify marketplace plugin packaging

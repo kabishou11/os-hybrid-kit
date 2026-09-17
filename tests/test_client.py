@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from opensearchpy.exceptions import NotFoundError
 
-from os_hybrid_kit import FusionMethod, HybridConfig, HybridKit
+from os_hybrid_kit import AliasNotFoundError, FusionMethod, HybridConfig, HybridKit
 
 
 class FakeIndices:
@@ -40,10 +40,11 @@ class FakeIndices:
     def delete_alias(self, *, index: str, name: str) -> dict[str, Any]:
         self.delete_alias_calls.append({"index": index, "name": name})
         targets = self.aliases.get(name)
-        if targets is not None:
-            targets.discard(index)
-            if not targets:
-                del self.aliases[name]
+        if not targets or index not in targets:
+            raise NotFoundError(404, "alias_not_found", {"error": "alias not found"})
+        targets.discard(index)
+        if not targets:
+            del self.aliases[name]
         return {"acknowledged": True}
 
     def get_alias(self, *, name: str) -> dict[str, Any]:
@@ -302,7 +303,7 @@ def test_delete_alias_defaults_to_config_index():
     kit.put_alias("docs-read")
     kit.delete_alias("docs-read")
     assert client.indices.delete_alias_calls == [{"index": "docs-v1", "name": "docs-read"}]
-    with pytest.raises(NotFoundError):
+    with pytest.raises(AliasNotFoundError, match="alias 'docs-read' was not found"):
         kit.get_alias("docs-read")
 
 
@@ -337,6 +338,26 @@ def test_swap_alias_looks_up_current_targets_when_old_index_omitted():
         }
     ]
     assert list(kit.get_alias("docs-read")) == ["docs-v2"]
+
+
+def test_get_alias_missing_names_alias_in_error():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=4, index="docs-v1"), client=client)  # type: ignore[arg-type]
+    with pytest.raises(AliasNotFoundError, match="alias 'no-such-alias' was not found") as exc_info:
+        kit.get_alias("no-such-alias")
+    assert isinstance(exc_info.value, ValueError)
+    assert exc_info.value.alias == "no-such-alias"
+    assert client.indices.get_alias_calls == ["no-such-alias"]
+
+
+def test_delete_alias_missing_names_alias_in_error():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=4, index="docs-v1"), client=client)  # type: ignore[arg-type]
+    with pytest.raises(AliasNotFoundError, match="alias 'no-such-alias' was not found") as exc_info:
+        kit.delete_alias("no-such-alias")
+    assert isinstance(exc_info.value, ValueError)
+    assert exc_info.value.alias == "no-such-alias"
+    assert client.indices.delete_alias_calls == [{"index": "docs-v1", "name": "no-such-alias"}]
 
 
 def test_swap_alias_missing_alias_only_adds():

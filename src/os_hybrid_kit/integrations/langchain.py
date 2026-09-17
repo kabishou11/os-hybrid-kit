@@ -8,6 +8,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from pydantic import ConfigDict
+
 from os_hybrid_kit.client import HybridKit
 from os_hybrid_kit.integrations import InstallError
 from os_hybrid_kit.integrations._search import hit_text_and_metadata, run_kit_search
@@ -29,8 +31,10 @@ class HybridKitRetriever(BaseRetriever):
     ``mode``: ``hybrid`` (default), ``lexical``, or ``knn``.
     """
 
-    kit: Any
-    embed_fn: Any
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    kit: HybridKit
+    embed_fn: EmbedFn
     search_kwargs: dict[str, Any]
 
     def __init__(

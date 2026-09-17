@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 
 from os_hybrid_kit import HybridConfig, HybridKit
+from os_hybrid_kit.types import EmbedFn
 
 pytest.importorskip("langchain_core")
 
@@ -35,6 +36,12 @@ class FakeClient:
                 ],
             }
         }
+
+
+def test_langchain_retriever_kit_and_embed_fn_are_typed() -> None:
+    fields = HybridKitRetriever.model_fields
+    assert fields["kit"].annotation is HybridKit
+    assert fields["embed_fn"].annotation is EmbedFn
 
 
 def test_langchain_retriever_hybrid_maps_documents() -> None:

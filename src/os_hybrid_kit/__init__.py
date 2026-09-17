@@ -4,7 +4,7 @@ Primary facade: ``HybridKit``, ``HybridConfig``, ``FusionMethod``, ``Hit``,
 ``SearchResult``. Mapping, pipeline, and query ``build_*`` helpers are advanced.
 """
 
-from os_hybrid_kit.client import HybridKit, build_opensearch_client
+from os_hybrid_kit.client import AliasNotFoundError, HybridKit, build_opensearch_client
 from os_hybrid_kit.config import FusionMethod, HybridConfig
 from os_hybrid_kit.mapping import build_index_body, build_knn_vector_property
 from os_hybrid_kit.pipeline import (
@@ -17,9 +17,10 @@ from os_hybrid_kit.query import build_hybrid_query, build_knn_query, build_lexic
 from os_hybrid_kit.results import Hit, SearchResult, parse_search_response
 from os_hybrid_kit.types import EmbedFn
 
-__version__ = "0.5.2"
+__version__ = "0.5.3"
 
 __all__ = [
+    "AliasNotFoundError",
     "EmbedFn",
     "FusionMethod",
     "Hit",

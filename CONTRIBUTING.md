@@ -18,6 +18,8 @@ Unit tests do not need OpenSearch:
 ```bash
 ruff check src adapters tests examples   # or: make lint
 pytest -m "not integration"              # or: make test
+# retriever tests skip unless extras are installed:
+make test-extras                         # pip install -e ".[dev,langchain,llama-index]" then pytest
 # optional coverage (pytest-cov is on the dev extra):
 pytest -m "not integration" --cov=os_hybrid_kit
 ```
