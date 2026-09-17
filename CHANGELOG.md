@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-17
+
+Validation, docs, and DX polish on the frozen v0.5 facade. No breaking renames.
+
+### Fixed
+
+- `put_alias` / `delete_alias` / `get_alias` / `swap_alias` / `with_index` reject empty or whitespace-only alias and index names with `ValueError` (they used to reach OpenSearch)
+- `lexical_search` / `hybrid_search` reject empty or whitespace-only `query` before calling OpenSearch
+- Empty embedding sequences raise `ValueError` (`knn_search` / `hybrid_search`); wrong-length vectors still raise as in 0.1.1
+
+### Changed
+
+- Package version `0.5.1`
+- `Hit.raw` / `SearchResult.raw` default to `{}` so you can construct them without the OpenSearch payload; `parse_search_response` still fills `raw`
+- `HybridConfig` / `HybridKit` `__repr__` omit credentials
+- Example scripts share `embed_documents` / `wait_for_opensearch` and exit with a `docker compose up -d` hint if the cluster is down
+- README, CONTRIBUTING, and ROADMAP aligned to the real facade (`0.5.x` is polish/harden)
+
+### Added
+
+- Thin `Makefile`: `make test`, `make lint`, `make demo-up`, `make demo-down`
+- Optional `pytest-cov` on the `dev` extra
+
 ## [0.5.0] - 2026-09-17
 
 Ops helpers and a light local timing script around the frozen v0.3 facade. No breaking renames.

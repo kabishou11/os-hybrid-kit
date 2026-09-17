@@ -13,12 +13,11 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from embed import embed_text  # noqa: E402
+from embed import embed_documents, embed_text, wait_for_opensearch  # noqa: E402
 from os_hybrid_kit import FusionMethod, HybridConfig, HybridKit  # noqa: E402
 
 DEMO_INDEX = "hybrid-demo"
@@ -58,24 +57,13 @@ DOCUMENTS = [
 ]
 
 
-def wait_for_cluster(kit: HybridKit, timeout: float) -> None:
-    deadline = time.time() + timeout
-    last_error: Exception | None = None
-    while time.time() < deadline:
-        try:
-            if kit.client.ping():
-                return
-        except Exception as exc:
-            last_error = exc
-        time.sleep(2)
-    raise SystemExit(f"OpenSearch did not become ready: {last_error}")
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Seed docs and run a hybrid query.")
     parser.add_argument(
         "--host",
+        "--url",
         default=os.environ.get("OPENSEARCH_URL", "http://localhost:9200"),
+        help="OpenSearch URL (or OPENSEARCH_URL).",
     )
     parser.add_argument(
         "--fusion",
@@ -84,7 +72,12 @@ def main() -> int:
         help="RRF needs OpenSearch 2.19+. Weighted min-max works on 2.11+.",
     )
     parser.add_argument("--query", default="running shoes for wet trails")
-    parser.add_argument("--timeout", type=float, default=120.0)
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=120.0,
+        help="Seconds to wait for OpenSearch to accept connections.",
+    )
     args = parser.parse_args()
 
     config = HybridConfig(
@@ -98,18 +91,12 @@ def main() -> int:
         use_ssl=args.host.startswith("https://"),
     )
     kit = HybridKit(config)
-    wait_for_cluster(kit, args.timeout)
+    wait_for_opensearch(kit, url=args.host, timeout=args.timeout)
 
     kit.delete_index()
     kit.ensure_index(extra_properties={"title": {"type": "text"}})
     kit.upsert_pipeline()
-
-    seeded = []
-    for doc in DOCUMENTS:
-        body = dict(doc)
-        body["embedding"] = embed_text(f"{body['title']} {body['content']}", DIMENSION)
-        seeded.append(body)
-    kit.index_documents(seeded)
+    kit.index_documents(embed_documents(DOCUMENTS, DIMENSION))
 
     query_vector = embed_text(args.query, DIMENSION)
     result = kit.hybrid_search(args.query, query_vector, size=5)

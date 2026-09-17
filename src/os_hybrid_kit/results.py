@@ -7,19 +7,32 @@ from typing import Any
 
 @dataclass(frozen=True)
 class Hit:
+    """One OpenSearch hit.
+
+    ``raw`` is the original hit dict from OpenSearch. It is optional when you
+    construct a ``Hit`` yourself; ``parse_search_response`` always fills it.
+    """
+
     id: str
     score: float
     source: dict[str, Any]
     index: str
-    raw: dict[str, Any] = field(repr=False, compare=False)
+    raw: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
 
 
 @dataclass(frozen=True)
 class SearchResult:
+    """Parsed search response: ``hits``, ``total``, ``max_score``.
+
+    ``texts(field)`` returns ``str(hit.source.get(field, ""))`` for each hit.
+    ``raw`` is the original OpenSearch response; optional when constructing
+    a result yourself.
+    """
+
     hits: list[Hit]
     total: int
     max_score: float | None
-    raw: dict[str, Any] = field(repr=False, compare=False)
+    raw: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
 
     def texts(self, field: str) -> list[str]:
         return [str(hit.source.get(field, "")) for hit in self.hits]
