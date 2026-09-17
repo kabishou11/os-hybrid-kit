@@ -11,6 +11,7 @@ Usage (from the repo root, with the cluster up):
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from pathlib import Path
@@ -72,7 +73,10 @@ def wait_for_cluster(kit: HybridKit, timeout: float) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Seed docs and run a hybrid query.")
-    parser.add_argument("--host", default="http://localhost:9200")
+    parser.add_argument(
+        "--host",
+        default=os.environ.get("OPENSEARCH_URL", "http://localhost:9200"),
+    )
     parser.add_argument(
         "--fusion",
         choices=["rrf", "weighted"],
@@ -96,8 +100,7 @@ def main() -> int:
     kit = HybridKit(config)
     wait_for_cluster(kit, args.timeout)
 
-    if kit.client.indices.exists(index=DEMO_INDEX):
-        kit.client.indices.delete(index=DEMO_INDEX)
+    kit.delete_index()
     kit.ensure_index(extra_properties={"title": {"type": "text"}})
     kit.upsert_pipeline()
 

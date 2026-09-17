@@ -10,6 +10,7 @@ from os_hybrid_kit import FusionMethod, HybridConfig, HybridKit
 class FakeIndices:
     def __init__(self) -> None:
         self.created: list[dict[str, Any]] = []
+        self.deleted: list[str] = []
         self.exists_index = False
 
     def exists(self, index: str) -> bool:
@@ -18,6 +19,11 @@ class FakeIndices:
     def create(self, index: str, body: dict[str, Any]) -> dict[str, Any]:
         self.created.append({"index": index, "body": body})
         self.exists_index = True
+        return {"acknowledged": True}
+
+    def delete(self, index: str) -> dict[str, Any]:
+        self.deleted.append(index)
+        self.exists_index = False
         return {"acknowledged": True}
 
 
@@ -99,3 +105,15 @@ def test_hybrid_search_rejects_wrong_embedding_length():
     kit = HybridKit(HybridConfig(dimension=3), client=FakeClient())  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="embedding length"):
         kit.hybrid_search("q", [0.1, 0.2])
+
+
+def test_exists_and_delete_index():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=4, index="hybrid-test"), client=client)  # type: ignore[arg-type]
+    assert kit.exists_index() is False
+    assert kit.delete_index() is False
+    assert kit.ensure_index() is True
+    assert kit.exists_index() is True
+    assert kit.delete_index() is True
+    assert kit.exists_index() is False
+    assert client.indices.deleted == ["hybrid-test"]

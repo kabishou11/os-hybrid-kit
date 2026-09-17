@@ -1,4 +1,8 @@
-"""Portable OpenSearch hybrid search kit (BM25 + kNN + RRF / weighted fusion)."""
+"""Portable OpenSearch hybrid search kit (BM25 + kNN + RRF / weighted fusion).
+
+Primary facade: ``HybridKit``, ``HybridConfig``, ``FusionMethod``, ``Hit``,
+``SearchResult``. Mapping, pipeline, and query ``build_*`` helpers are advanced.
+"""
 
 from os_hybrid_kit.client import HybridKit, build_opensearch_client
 from os_hybrid_kit.config import FusionMethod, HybridConfig
@@ -12,7 +16,7 @@ from os_hybrid_kit.pipeline import (
 from os_hybrid_kit.query import build_hybrid_query
 from os_hybrid_kit.results import Hit, SearchResult, parse_search_response
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "FusionMethod",

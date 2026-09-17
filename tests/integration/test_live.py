@@ -29,8 +29,7 @@ def test_hybrid_search_against_live_opensearch():
         use_ssl=OPENSEARCH_URL.startswith("https://"),
     )
     kit = HybridKit(config)
-    if kit.client.indices.exists(index=config.index):
-        kit.client.indices.delete(index=config.index)
+    kit.delete_index()
     kit.ensure_index(extra_properties={"title": {"type": "text"}})
     kit.upsert_pipeline()
     kit.index_documents(

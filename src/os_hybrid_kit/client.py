@@ -27,7 +27,16 @@ def build_opensearch_client(config: HybridConfig) -> OpenSearch:
 
 
 class HybridKit:
-    """Thin client: mapping helper, pipeline upsert, and hybrid_search."""
+    """Primary facade: index lifecycle, pipeline upsert, bulk index, hybrid search.
+
+    Typical flow::
+
+        kit = HybridKit(config)
+        kit.ensure_index()
+        kit.upsert_pipeline()
+        kit.index_documents([...])
+        result = kit.hybrid_search(query, embedding)
+    """
 
     def __init__(
         self,
@@ -38,6 +47,10 @@ class HybridKit:
         self.config = config
         self.client = client if client is not None else build_opensearch_client(config)
 
+    def exists_index(self) -> bool:
+        """Return True if the configured index exists."""
+        return bool(self.client.indices.exists(index=self.config.index))
+
     def ensure_index(
         self,
         *,
@@ -45,7 +58,7 @@ class HybridKit:
         extra_settings: dict[str, Any] | None = None,
     ) -> bool:
         """Create the index if it does not exist. Returns True when created."""
-        if self.client.indices.exists(index=self.config.index):
+        if self.exists_index():
             return False
         body = build_index_body(
             self.config,
@@ -53,6 +66,13 @@ class HybridKit:
             extra_settings=extra_settings,
         )
         self.client.indices.create(index=self.config.index, body=body)
+        return True
+
+    def delete_index(self) -> bool:
+        """Delete the configured index if it exists. Returns True when deleted."""
+        if not self.exists_index():
+            return False
+        self.client.indices.delete(index=self.config.index)
         return True
 
     def upsert_pipeline(self) -> Any:
@@ -98,7 +118,8 @@ class HybridKit:
         if len(embedding) != self.config.dimension:
             raise ValueError(
                 f"embedding length {len(embedding)} does not match "
-                f"dimension {self.config.dimension}"
+                f"config.dimension {self.config.dimension}; use the same model "
+                "as at index time"
             )
         size = size if size is not None else self.config.size
         k = knn_k if knn_k is not None else max(self.config.knn_k, size)

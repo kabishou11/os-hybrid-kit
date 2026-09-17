@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from enum import Enum
 from typing import Any, Literal
 
@@ -72,6 +73,47 @@ class HybridConfig(BaseModel):
             if any(w < 0.0 or w > 1.0 for w in self.rrf_weights):
                 raise ValueError("rrf_weights values must be in [0.0, 1.0]")
         return self
+
+    @classmethod
+    def from_env(cls, **overrides: Any) -> HybridConfig:
+        """Load hosts, index, and dimension from ``OPENSEARCH_*`` environment variables.
+
+        Reads, when set:
+
+        * ``OPENSEARCH_HOSTS`` — comma-separated URLs (takes precedence)
+        * ``OPENSEARCH_URL`` — single URL if ``OPENSEARCH_HOSTS`` is unset
+        * ``OPENSEARCH_INDEX``
+        * ``OPENSEARCH_DIM`` — integer vector size (required unless passed as a kwarg)
+
+        Keyword arguments override environment values.
+        """
+        env = os.environ
+        data: dict[str, Any] = {}
+
+        hosts_raw = env.get("OPENSEARCH_HOSTS", "").strip()
+        url = env.get("OPENSEARCH_URL", "").strip()
+        if hosts_raw:
+            hosts = [item.strip() for item in hosts_raw.split(",") if item.strip()]
+            if hosts:
+                data["hosts"] = hosts
+        elif url:
+            data["hosts"] = [url]
+
+        index = env.get("OPENSEARCH_INDEX", "").strip()
+        if index:
+            data["index"] = index
+
+        dim_raw = env.get("OPENSEARCH_DIM", "").strip()
+        if dim_raw:
+            try:
+                data["dimension"] = int(dim_raw)
+            except ValueError as exc:
+                raise ValueError(
+                    f"OPENSEARCH_DIM must be an integer, got {dim_raw!r}"
+                ) from exc
+
+        data.update(overrides)
+        return cls(**data)
 
     @property
     def weighted_weights(self) -> list[float]:

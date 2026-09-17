@@ -1,19 +1,14 @@
 # os-hybrid-kit
 
-Portable English Python library for **OpenSearch hybrid search**: BM25 lexical match plus kNN vectors, fused with **RRF** or **weighted score normalization**. Includes a thin **Dify** external-knowledge / VDB stub.
+Portable Python library for **OpenSearch hybrid search**: BM25 lexical match plus kNN vectors, fused with **RRF** or **weighted score normalization**.
 
-## Problem
+## Why
 
-Keyword scores (BM25) and vector similarity live on different scales. Adding them naively ranks the wrong documents. OpenSearch 2.x solves this with a `hybrid` query and a **search pipeline** that runs between the query and fetch phases:
+Keyword scores (BM25) and vector similarity live on different scales. Adding them naively ranks the wrong documents. OpenSearch 2.x solves this with a `hybrid` query and a **search pipeline** that fuses the two lists after the query phase.
 
-| Fusion | Processor | Combines | OpenSearch |
-| --- | --- | --- | --- |
-| Reciprocal rank fusion (RRF) | `score-ranker-processor` | ranks, not raw scores | 2.19+ |
-| Weighted normalization | `normalization-processor` | min-max / L2 / z-score, then a weighted mean | 2.11+ |
+This kit builds the index mapping, upserts that pipeline, and runs `hybrid_search(query, embedding, ...)`. You bring the embedding model.
 
-This kit builds the index mapping, upserts the pipeline, and runs `hybrid_search(query, embedding, ...)` through `opensearch-py`. You bring the embedding model.
-
-## Quickstart
+## Install and 5-minute quickstart
 
 Python 3.10+. Docker for the demo cluster.
 
@@ -43,20 +38,26 @@ Wait until `curl http://localhost:9200` returns cluster info, then rerun the exa
 
 ## Library usage
 
+**Primary facade:** `HybridConfig`, `FusionMethod`, `HybridKit`, `Hit`, `SearchResult`.
+
 ```python
 from os_hybrid_kit import FusionMethod, HybridConfig, HybridKit
 
 config = HybridConfig(
     hosts=["http://localhost:9200"],
     index="docs",
-    dimension=384,          # must match your embedding model
+    dimension=384,            # must match your embedding model
     text_field="content",
     vector_field="embedding",
     fusion=FusionMethod.RRF,  # or FusionMethod.WEIGHTED
-    lexical_weight=0.3,       # used by weighted fusion; clause order is lexical then kNN
+    lexical_weight=0.3,       # weighted fusion; clause order is lexical then kNN
     vector_weight=0.7,
 )
+# Or: HybridConfig.from_env()  # OPENSEARCH_URL / OPENSEARCH_HOSTS,
+#                              # OPENSEARCH_INDEX, OPENSEARCH_DIM
+
 kit = HybridKit(config)
+kit.delete_index()            # no-op if the index is missing
 kit.ensure_index(extra_properties={"title": {"type": "text"}})
 kit.upsert_pipeline()
 
@@ -72,23 +73,39 @@ kit.index_documents(
 )
 
 result = kit.hybrid_search("running shoes", query_vector, size=10)
-for hit in result.hits:
+for hit in result.hits:       # Hit: id, score, source, index
     print(hit.score, hit.source["content"])
+# result.texts("content") -> list[str]
 ```
 
-Builders are also public if you already have an OpenSearch client:
+`hybrid_search` sends a `hybrid` query with two clauses — `match` on the text field, then `knn` on the vector field — and sets `search_pipeline` so OpenSearch fuses the lists. Embeddings are **yours**; the kit does not call a model or the Neural Search `neural` query. A vector whose length does not match `config.dimension` raises `ValueError`.
+
+`exists_index` / `ensure_index` / `delete_index` operate on `config.index`. `from_env()` reads `OPENSEARCH_HOSTS` (comma-separated, takes precedence) or `OPENSEARCH_URL`, plus `OPENSEARCH_INDEX` and `OPENSEARCH_DIM`. Keyword arguments override the environment.
+
+**Builders** (advanced — use these if you already have an OpenSearch client):
 
 ```python
 from os_hybrid_kit import (
     build_hybrid_query,
     build_index_body,
+    build_knn_vector_property,
+    build_opensearch_client,
+    build_pipeline_body,
     build_rrf_pipeline_body,
     build_weighted_pipeline_body,
+    parse_search_response,
     upsert_search_pipeline,
 )
 ```
 
-`hybrid_search` sends a `hybrid` query with two clauses — `match` on the text field, then `knn` on the vector field — and sets `search_pipeline` so OpenSearch fuses the lists. Embeddings are **yours**; the kit does not call a model or the Neural Search `neural` query.
+## Fusion
+
+| Fusion | Processor | Combines | OpenSearch |
+| --- | --- | --- | --- |
+| Reciprocal rank fusion (`FusionMethod.RRF`) | `score-ranker-processor` | ranks, not raw scores | 2.19+ |
+| Weighted normalization (`FusionMethod.WEIGHTED`) | `normalization-processor` | min-max / L2 / z-score, then a weighted mean | 2.11+ |
+
+Default weighted weights are `lexical_weight=0.3`, `vector_weight=0.7` and must sum to 1.0. Clause order is lexical then kNN, so those weights line up with the hybrid query.
 
 ## Dify adapter
 
@@ -106,6 +123,10 @@ python -m pip install -e ".[dev]"
 pytest                 # unit tests; mapping/pipeline builders do not need OpenSearch
 pytest -m integration  # live cluster at OPENSEARCH_URL (default http://localhost:9200)
 ```
+
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md): v0.1 (this) → v0.2 prove → v0.3 resume highlight → v0.4+ optional.
 
 ## What this is not
 
