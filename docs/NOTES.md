@@ -45,6 +45,16 @@ print(result.raw.get("took"))  # milliseconds; OpenSearch `took`
 
 Time `embed_fn(query)` separately if you care about end-to-end. `examples/compare_retrievers.py` is for ranking, not load testing. For a fair comparison, warm the index, drop the vector from `_source` (default), and record `took` for `lexical_search`, `knn_search`, and `hybrid_search` on the same query set.
 
+A light stopwatch script against the Compose cluster:
+
+```bash
+docker compose up -d
+python examples/benchmark_retrievers.py
+python examples/benchmark_retrievers.py --url http://localhost:9200 --n-queries 10 --fusion weighted
+```
+
+It seeds a fixed demo corpus, runs lexical / kNN / hybrid for N queries, and prints hit ids, scores, and **wall-clock** milliseconds (`time.perf_counter` around the search call; hash embed excluded; one warm-up discarded). Those numbers are local timings, not a published benchmark and not nDCG.
+
 ## Filters and `_source`
 
 All three search methods accept `filter_query` (an OpenSearch query clause) and `source_includes` / `source_excludes`.

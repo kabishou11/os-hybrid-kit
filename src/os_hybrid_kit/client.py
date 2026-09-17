@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from opensearchpy import OpenSearch
+from opensearchpy.exceptions import NotFoundError
 from opensearchpy.helpers import bulk
 
 from os_hybrid_kit.config import HybridConfig
@@ -38,6 +39,8 @@ class HybridKit:
         result = kit.hybrid_search(query, embedding)
 
     ``lexical_search`` / ``knn_search`` hit the same index without a pipeline.
+    ``config.index`` may be an alias; ``put_alias`` / ``swap_alias`` /
+    ``with_index`` cover a thin cutover path (not full index management).
     """
 
     def __init__(
@@ -48,6 +51,18 @@ class HybridKit:
     ) -> None:
         self.config = config
         self.client = client if client is not None else build_opensearch_client(config)
+
+    def with_index(self, name: str) -> HybridKit:
+        """Return a kit that targets ``name`` (index or alias), sharing this client.
+
+        Search and index methods use ``config.index`` as the OpenSearch target, so
+        passing an alias here is the zero-downtime read path after ``put_alias``
+        or ``swap_alias``.
+        """
+        return HybridKit(self.config.model_copy(update={"index": name}), client=self.client)
+
+    def _target_index(self, index: str | None) -> str:
+        return self.config.index if index is None else index
 
     def exists_index(self) -> bool:
         """Return True if the configured index exists."""
@@ -76,6 +91,49 @@ class HybridKit:
             return False
         self.client.indices.delete(index=self.config.index)
         return True
+
+    def put_alias(self, alias: str, *, index: str | None = None) -> Any:
+        """Point ``alias`` at ``index`` (default ``config.index``).
+
+        Does not remove other targets; use ``swap_alias`` for cutover.
+        """
+        return self.client.indices.put_alias(index=self._target_index(index), name=alias)
+
+    def delete_alias(self, alias: str, *, index: str | None = None) -> Any:
+        """Remove ``alias`` from ``index`` (default ``config.index``)."""
+        return self.client.indices.delete_alias(index=self._target_index(index), name=alias)
+
+    def get_alias(self, alias: str) -> dict[str, Any]:
+        """Resolve ``alias`` to OpenSearch's ``{index: {"aliases": {alias: ...}}}`` mapping."""
+        return dict(self.client.indices.get_alias(name=alias))
+
+    def swap_alias(
+        self,
+        alias: str,
+        new_index: str,
+        *,
+        old_index: str | None = None,
+    ) -> Any:
+        """Point ``alias`` at ``new_index``, removing the previous target in one ``_aliases`` call.
+
+        When ``old_index`` is set, this is a single ``update_aliases`` request
+        (remove old + add new). When omitted, current targets are looked up
+        first, then updated — still one write, but not a single round-trip.
+        """
+        actions: list[dict[str, Any]] = []
+        if old_index is not None:
+            if old_index != new_index:
+                actions.append({"remove": {"index": old_index, "alias": alias}})
+        else:
+            try:
+                mapping = self.get_alias(alias)
+            except NotFoundError:
+                mapping = {}
+            for name in mapping:
+                if name != new_index:
+                    actions.append({"remove": {"index": name, "alias": alias}})
+        actions.append({"add": {"index": new_index, "alias": alias}})
+        return self.client.indices.update_aliases(body={"actions": actions})
 
     def upsert_pipeline(self) -> Any:
         """Create or replace the hybrid search pipeline from config."""

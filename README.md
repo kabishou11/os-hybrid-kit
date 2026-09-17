@@ -5,7 +5,7 @@ Portable Python library for **OpenSearch hybrid search**: BM25 lexical match plu
 [![CI](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**v0.4.0** — facade frozen; optional LangChain and LlamaIndex retrievers. You bring the embedding model; the kit builds the mapping, upserts the search pipeline, and runs hybrid search.
+**v0.5.0** — facade frozen; alias helpers and a light local benchmark. You bring the embedding model; the kit builds the mapping, upserts the search pipeline, and runs hybrid search.
 
 [CHANGELOG](CHANGELOG.md) · [Production checklist](docs/PRODUCTION.md) · [Relevance and latency notes](docs/NOTES.md) · [Integrations](docs/INTEGRATIONS.md) · [Roadmap](ROADMAP.md)
 
@@ -30,7 +30,8 @@ The demo uses OpenSearch **2.19.6** (single node, security plugin off, `http://l
 ```bash
 python examples/seed_and_search.py --fusion weighted
 python examples/seed_and_search.py --query "waterproof boots for muddy paths"
-python examples/compare_retrievers.py   # BM25 vs kNN vs hybrid
+python examples/compare_retrievers.py   # BM25 vs kNN vs hybrid ranking
+python examples/benchmark_retrievers.py # same three modes, wall time (ms)
 ```
 
 If OpenSearch fails to boot on Linux: `sudo sysctl -w vm.max_map_count=262144`. Wait until `curl http://localhost:9200` returns cluster info. Tear down with `docker compose down`.
@@ -39,7 +40,7 @@ If OpenSearch fails to boot on Linux: `sudo sysctl -w vm.max_map_count=262144`. 
 
 **Primary facade:** `HybridKit`, `HybridConfig`, `FusionMethod`, `Hit`, `SearchResult`.
 
-**Methods:** `ensure_index`, `exists_index`, `delete_index`, `upsert_pipeline`, `index_documents`, `lexical_search`, `knn_search`, `hybrid_search`.
+**Methods:** `ensure_index`, `exists_index`, `delete_index`, `upsert_pipeline`, `index_documents`, `lexical_search`, `knn_search`, `hybrid_search`. Alias helpers: `put_alias`, `delete_alias`, `get_alias`, `swap_alias`, `with_index`.
 
 ```python
 from os_hybrid_kit import FusionMethod, HybridConfig, HybridKit
@@ -104,14 +105,43 @@ from os_hybrid_kit import (
 )
 ```
 
+## Aliases and cutover
+
+`config.index` is the OpenSearch target for mapping, bulk, and search. It may be a **concrete index** or an **alias**. Pointing reads at an alias lets you rebuild a new index and cut over without changing query code.
+
+```python
+kit = HybridKit(config)  # config.index == "docs-v1"
+kit.ensure_index()
+kit.put_alias("docs-read")  # alias -> docs-v1
+kit.with_index("docs-read").hybrid_search(query, embedding)
+
+blue = kit.with_index("docs-v2")
+blue.ensure_index()
+blue.index_documents([...])
+kit.swap_alias("docs-read", "docs-v2", old_index="docs-v1")
+```
+
+`swap_alias` issues one `_aliases` request (remove old + add new) when `old_index` is passed. If `old_index` is omitted, the kit looks up current targets first, then updates. This is not a full index-management product: no `is_write_index` policy, no ILM.
+
+## Benchmark
+
+`examples/benchmark_retrievers.py` seeds a fixed demo corpus and prints BM25 vs kNN vs hybrid hit ids, scores, and wall time in milliseconds. It is a stopwatch on your machine, not an eval harness and not a quality claim. `examples/compare_retrievers.py` is the ranking side-by-side (no timings).
+
+```bash
+docker compose up -d
+python examples/benchmark_retrievers.py
+python examples/benchmark_retrievers.py --url http://localhost:9200 --n-queries 10 --fusion weighted
+```
+
 ## Stable API (0.3)
 
-These names are frozen for 0.3.x+. Additive extras (0.4 LangChain / LlamaIndex retrievers) live in `os_hybrid_kit.integrations` and do not rename this facade. Breaking renames will not.
+These names are frozen for 0.3.x+. Additive extras (0.4 LangChain / LlamaIndex retrievers, 0.5 alias helpers) do not rename this facade. Breaking renames will not.
 
 | Kind | Names |
 | --- | --- |
 | Types | `HybridKit`, `HybridConfig`, `FusionMethod`, `Hit`, `SearchResult` |
 | Methods | `ensure_index`, `exists_index`, `delete_index`, `upsert_pipeline`, `index_documents`, `lexical_search`, `knn_search`, `hybrid_search` |
+| Additive (0.5) | `put_alias`, `delete_alias`, `get_alias`, `swap_alias`, `with_index` |
 | Fusion values | `FusionMethod.RRF` (`"rrf"`), `FusionMethod.WEIGHTED` (`"weighted"`) |
 | Typing | `EmbedFn` (optional protocol for query embedders) |
 | Advanced | `build_*` helpers, `parse_search_response`, `upsert_search_pipeline`, `build_opensearch_client` |
