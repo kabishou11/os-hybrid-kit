@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-09-17
+
+Close remaining audit follow-ups on the frozen v0.5 facade. No breaking renames.
+
+### Fixed
+
+- Retriever `search_kwargs` raises `ValueError` when both `filter` and `filter_query` are set (`filter` is the LangChain-style alias)
+- Dify VDB `search_by_vector` / `search_by_full_text` call `knn_search` / `lexical_search`, so query-vector dimension checks apply
+- `docs/PRODUCTION.md` cites `adapters.dify.retrieval` / `adapters/dify/retrieval.py`
+
+### Changed
+
+- Package version `0.5.2`
+- README Stable API heading: frozen since 0.3 / current 0.5.x
+- Python 3.13 classifier
+
+### Added
+
+- Unit tests for the dual-filter raise, VDB dimension, `index_documents` bulk actions, and `filter_query` on kit search methods
+
 ## [0.5.1] - 2026-09-17
 
 Validation, docs, and DX polish on the frozen v0.5 facade. No breaking renames.

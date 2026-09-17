@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
 from adapters.dify import (
     HybridVectorStore,
     RetrievalRequest,
@@ -93,3 +94,34 @@ def test_vdb_stub_hybrid_search_returns_documents():
     assert docs[0].page_content == "Dify retrieves external chunks."
     assert docs[0].metadata["title"] == "intro.txt"
     assert docs[0].score == 0.9
+
+
+def test_vdb_search_by_vector_rejects_wrong_dimension():
+    kit = HybridKit(HybridConfig(dimension=2, index="kb"), client=FakeClient())  # type: ignore[arg-type]
+    store = HybridVectorStore(kit)
+    with pytest.raises(ValueError, match="embedding length"):
+        store.search_by_vector([0.5], top_k=2)
+    assert kit.client.searches == []  # type: ignore[attr-defined]
+
+
+def test_vdb_search_by_vector_uses_knn_search():
+    kit = HybridKit(HybridConfig(dimension=2, index="kb"), client=FakeClient())  # type: ignore[arg-type]
+    store = HybridVectorStore(kit)
+    docs = store.search_by_vector([0.5, 0.5], top_k=2)
+    search = kit.client.searches[0]  # type: ignore[attr-defined]
+    assert "params" not in search
+    knn = search["body"]["query"]["knn"]["embedding"]
+    assert knn["vector"] == [0.5, 0.5]
+    assert search["body"]["size"] == 2
+    assert docs[0].page_content == "Dify retrieves external chunks."
+
+
+def test_vdb_search_by_full_text_uses_lexical_search():
+    kit = HybridKit(HybridConfig(dimension=2, index="kb"), client=FakeClient())  # type: ignore[arg-type]
+    store = HybridVectorStore(kit)
+    docs = store.search_by_full_text("What is Dify?", top_k=2)
+    search = kit.client.searches[0]  # type: ignore[attr-defined]
+    assert "params" not in search
+    assert search["body"]["query"] == {"match": {"content": {"query": "What is Dify?"}}}
+    assert search["body"]["size"] == 2
+    assert docs[0].page_content == "Dify retrieves external chunks."

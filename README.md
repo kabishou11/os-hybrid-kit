@@ -5,7 +5,7 @@ Portable Python library for **OpenSearch hybrid search**: BM25 lexical match plu
 [![CI](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**v0.5.1** — facade frozen; 0.5.x is polish and hardening. You bring the embedding model; the kit builds the mapping, upserts the search pipeline, and runs hybrid search.
+**v0.5.2** — facade frozen; 0.5.x is polish and hardening. You bring the embedding model; the kit builds the mapping, upserts the search pipeline, and runs hybrid search.
 
 [CHANGELOG](CHANGELOG.md) · [Production checklist](docs/PRODUCTION.md) · [Relevance and latency notes](docs/NOTES.md) · [Integrations](docs/INTEGRATIONS.md) · [Roadmap](ROADMAP.md)
 
@@ -135,9 +135,9 @@ python examples/benchmark_retrievers.py
 python examples/benchmark_retrievers.py --url http://localhost:9200 --n-queries 10 --fusion weighted
 ```
 
-## Stable API (0.3)
+## Stable API (frozen since 0.3 / current 0.5.x)
 
-These names are frozen for 0.3.x+. Additive extras (0.4 LangChain / LlamaIndex retrievers, 0.5 alias helpers) do not rename this facade. Breaking renames will not.
+These names have been frozen since 0.3. Additive extras (0.4 LangChain / LlamaIndex retrievers, 0.5 alias helpers) do not rename this facade. Breaking renames will not.
 
 | Kind | Names |
 | --- | --- |
@@ -188,7 +188,7 @@ retriever = HybridKitRetriever(kit, embed_fn, search_kwargs={"size": 10})
 nodes = retriever.retrieve("waterproof trail shoes")
 ```
 
-Importing a submodule without its extra raises `InstallError`. Details: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
+Importing a submodule without its extra raises `os_hybrid_kit.integrations.InstallError`. Details: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
 
 ## Dify adapter
 

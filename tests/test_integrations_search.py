@@ -85,6 +85,31 @@ def test_run_kit_search_knn_and_filter() -> None:
     assert "params" not in search
 
 
+def test_run_kit_search_filter_query_alias() -> None:
+    kit = _kit()
+    run_kit_search(
+        kit,
+        "trail shoes",
+        lambda _q: [0.1, 0.2, 0.3, 0.4],
+        {"mode": "lexical", "filter_query": {"term": {"category": "footwear"}}},
+    )
+    search = kit.client.searches[0]  # type: ignore[attr-defined]
+    assert search["body"]["query"]["bool"]["filter"] == [{"term": {"category": "footwear"}}]
+
+
+def test_run_kit_search_rejects_both_filter_keys() -> None:
+    kit = _kit()
+    clause = {"term": {"category": "footwear"}}
+    with pytest.raises(ValueError, match="both 'filter' and 'filter_query'"):
+        run_kit_search(
+            kit,
+            "trail shoes",
+            lambda _q: [0.1, 0.2, 0.3, 0.4],
+            {"filter": clause, "filter_query": clause},
+        )
+    assert kit.client.searches == []  # type: ignore[attr-defined]
+
+
 def test_run_kit_search_rejects_unknown_mode() -> None:
     kit = _kit()
     with pytest.raises(ValueError, match="unknown search mode"):

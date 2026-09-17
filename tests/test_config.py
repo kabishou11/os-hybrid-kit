@@ -78,7 +78,7 @@ def test_from_env_requires_dimension_from_env_or_kwargs(
 
 
 def test_version_and_public_exports() -> None:
-    assert os_hybrid_kit.__version__ == "0.5.1"
+    assert os_hybrid_kit.__version__ == "0.5.2"
     for name in os_hybrid_kit.__all__:
         assert hasattr(os_hybrid_kit, name)
 

@@ -171,6 +171,90 @@ def test_knn_search_sends_raw_knn_without_pipeline():
     assert result.hits[0].id == "1"
 
 
+def test_lexical_search_forwards_filter_query():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3), client=client)  # type: ignore[arg-type]
+    kit.lexical_search("running shoes", filter_query={"term": {"category": "shoes"}})
+    query = client.searches[0]["body"]["query"]
+    assert query["bool"]["filter"] == [{"term": {"category": "shoes"}}]
+
+
+def test_knn_search_forwards_filter_query():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3), client=client)  # type: ignore[arg-type]
+    kit.knn_search([0.1, 0.2, 0.3], filter_query={"term": {"category": "shoes"}})
+    knn = client.searches[0]["body"]["query"]["knn"]["embedding"]
+    assert knn["filter"] == {"term": {"category": "shoes"}}
+
+
+def test_hybrid_search_forwards_filter_query():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3), client=client)  # type: ignore[arg-type]
+    kit.hybrid_search(
+        "running shoes",
+        [0.1, 0.2, 0.3],
+        filter_query={"term": {"category": "shoes"}},
+    )
+    hybrid = client.searches[0]["body"]["query"]["hybrid"]
+    assert hybrid["filter"] == {"term": {"category": "shoes"}}
+
+
+def test_index_documents_pops_id_from_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, Any] = {}
+
+    def fake_bulk(client: Any, actions: Any, refresh: bool = True) -> tuple[int, list[Any]]:
+        captured["client"] = client
+        captured["actions"] = list(actions)
+        captured["refresh"] = refresh
+        return (1, [])
+
+    monkeypatch.setattr("os_hybrid_kit.client.bulk", fake_bulk)
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=2, index="docs"), client=client)  # type: ignore[arg-type]
+    result = kit.index_documents(
+        [{"_id": "doc-1", "content": "hello", "embedding": [0.1, 0.2]}]
+    )
+    assert result == (1, [])
+    assert captured["client"] is client
+    assert captured["refresh"] is True
+    action = captured["actions"][0]
+    assert action["_index"] == "docs"
+    assert action["_id"] == "doc-1"
+    assert action["_source"] == {"content": "hello", "embedding": [0.1, 0.2]}
+    assert "_id" not in action["_source"]
+
+
+def test_index_documents_empty_list(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, Any] = {}
+
+    def fake_bulk(client: Any, actions: Any, refresh: bool = True) -> tuple[int, list[Any]]:
+        captured["actions"] = list(actions)
+        captured["refresh"] = refresh
+        return (0, [])
+
+    monkeypatch.setattr("os_hybrid_kit.client.bulk", fake_bulk)
+    kit = HybridKit(HybridConfig(dimension=2, index="docs"), client=FakeClient())  # type: ignore[arg-type]
+    result = kit.index_documents([])
+    assert result == (0, [])
+    assert captured["actions"] == []
+    assert captured["refresh"] is True
+
+
+def test_index_documents_omits_id_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, Any] = {}
+
+    def fake_bulk(client: Any, actions: Any, refresh: bool = True) -> tuple[int, list[Any]]:
+        captured["actions"] = list(actions)
+        return (1, [])
+
+    monkeypatch.setattr("os_hybrid_kit.client.bulk", fake_bulk)
+    kit = HybridKit(HybridConfig(dimension=2, index="docs"), client=FakeClient())  # type: ignore[arg-type]
+    kit.index_documents([{"content": "hello"}])
+    action = captured["actions"][0]
+    assert "_id" not in action
+    assert action["_source"] == {"content": "hello"}
+
+
 def test_knn_search_rejects_wrong_embedding_length():
     kit = HybridKit(HybridConfig(dimension=3), client=FakeClient())  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="embedding length"):

@@ -61,6 +61,12 @@ Shipped on `0.5.1`:
 - README / examples / CONTRIBUTING aligned to the frozen API
 - Thin Makefile and credential-free `__repr__`
 
+Shipped on `0.5.2`:
+
+- Retriever `search_kwargs` raises if both `filter` and `filter_query` are set
+- Dify VDB vector / full-text search goes through `knn_search` / `lexical_search`
+- Python 3.13 classifier
+
 Still optional / unshipped:
 
 - Dify marketplace plugin packaging

@@ -2,7 +2,7 @@
 
 Use this before pointing `HybridKit` at a real cluster. It is not an OpenSearch operations runbook.
 
-The public facade is `HybridKit`, `HybridConfig`, `FusionMethod`, `Hit`, and `SearchResult`. See [Stable API (0.3)](../README.md#stable-api-03).
+The public facade is `HybridKit`, `HybridConfig`, `FusionMethod`, `Hit`, and `SearchResult`. See [Stable API (frozen since 0.3 / current 0.5.x)](../README.md#stable-api-frozen-since-03--current-05x).
 
 ## Embedding dimension
 
@@ -41,7 +41,7 @@ Default `rank_constant` is 60. A document ranked first on both lists scores abou
 - [ ] If you use RRF, set any downstream score threshold to `0` (or a value on the order of `0.01`), not `0.5`.
 - [ ] If a product UI defaults to `0.5` (Dify's external-knowledge setting often does), either lower it or switch to `FusionMethod.WEIGHTED` (min-max scores are typically in `[0, 1]`).
 
-The Dify adapter (`adapters/dify/retrieve`) applies `retrieval_setting.score_threshold` to `Hit.score` as returned by OpenSearch.
+The Dify adapter (`adapters.dify.retrieval` / `adapters/dify/retrieval.py`) applies `retrieval_setting.score_threshold` to `Hit.score` as returned by OpenSearch.
 
 ## `index.knn` and the mapping engine
 
