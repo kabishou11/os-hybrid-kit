@@ -13,10 +13,10 @@ from os_hybrid_kit.pipeline import (
     build_weighted_pipeline_body,
     upsert_search_pipeline,
 )
-from os_hybrid_kit.query import build_hybrid_query
+from os_hybrid_kit.query import build_hybrid_query, build_knn_query, build_lexical_query
 from os_hybrid_kit.results import Hit, SearchResult, parse_search_response
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 __all__ = [
     "FusionMethod",
@@ -27,7 +27,9 @@ __all__ = [
     "__version__",
     "build_hybrid_query",
     "build_index_body",
+    "build_knn_query",
     "build_knn_vector_property",
+    "build_lexical_query",
     "build_opensearch_client",
     "build_pipeline_body",
     "build_rrf_pipeline_body",

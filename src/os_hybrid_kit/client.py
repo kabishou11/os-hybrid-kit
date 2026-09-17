@@ -9,7 +9,7 @@ from opensearchpy.helpers import bulk
 from os_hybrid_kit.config import HybridConfig
 from os_hybrid_kit.mapping import build_index_body
 from os_hybrid_kit.pipeline import build_pipeline_body, upsert_search_pipeline
-from os_hybrid_kit.query import build_hybrid_query
+from os_hybrid_kit.query import build_hybrid_query, build_knn_query, build_lexical_query
 from os_hybrid_kit.results import SearchResult, parse_search_response
 
 
@@ -36,6 +36,8 @@ class HybridKit:
         kit.upsert_pipeline()
         kit.index_documents([...])
         result = kit.hybrid_search(query, embedding)
+
+    ``lexical_search`` / ``knn_search`` hit the same index without a pipeline.
     """
 
     def __init__(
@@ -101,6 +103,58 @@ class HybridKit:
             actions.append(action)
         return bulk(self.client, actions, refresh=refresh)
 
+    def lexical_search(
+        self,
+        query: str,
+        *,
+        size: int | None = None,
+        filter_query: Mapping[str, Any] | None = None,
+        source_excludes: Sequence[str] | None = None,
+        source_includes: Sequence[str] | None = None,
+        extra_body: Mapping[str, Any] | None = None,
+    ) -> SearchResult:
+        """Run a BM25 ``match`` query. Does not use a search pipeline."""
+        size = size if size is not None else self.config.size
+        body = build_lexical_query(
+            query,
+            text_field=self.config.text_field,
+            size=size,
+            filter_query=filter_query,
+            source_excludes=self._source_excludes(source_excludes),
+            source_includes=source_includes,
+            extra_body=extra_body,
+        )
+        response = self.client.search(index=self.config.index, body=body)
+        return parse_search_response(response)
+
+    def knn_search(
+        self,
+        embedding: Sequence[float],
+        *,
+        size: int | None = None,
+        knn_k: int | None = None,
+        filter_query: Mapping[str, Any] | None = None,
+        source_excludes: Sequence[str] | None = None,
+        source_includes: Sequence[str] | None = None,
+        extra_body: Mapping[str, Any] | None = None,
+    ) -> SearchResult:
+        """Run a raw ``knn`` query. Does not use a search pipeline."""
+        self._require_embedding(embedding)
+        size = size if size is not None else self.config.size
+        k = knn_k if knn_k is not None else max(self.config.knn_k, size)
+        body = build_knn_query(
+            embedding,
+            vector_field=self.config.vector_field,
+            size=size,
+            knn_k=k,
+            filter_query=filter_query,
+            source_excludes=self._source_excludes(source_excludes),
+            source_includes=source_includes,
+            extra_body=extra_body,
+        )
+        response = self.client.search(index=self.config.index, body=body)
+        return parse_search_response(response)
+
     def hybrid_search(
         self,
         query: str,
@@ -115,17 +169,9 @@ class HybridKit:
         pipeline_name: str | None = None,
     ) -> SearchResult:
         """Run BM25 + kNN hybrid search through the configured search pipeline."""
-        if len(embedding) != self.config.dimension:
-            raise ValueError(
-                f"embedding length {len(embedding)} does not match "
-                f"config.dimension {self.config.dimension}; use the same model "
-                "as at index time"
-            )
+        self._require_embedding(embedding)
         size = size if size is not None else self.config.size
         k = knn_k if knn_k is not None else max(self.config.knn_k, size)
-        excludes: Sequence[str] | None = source_excludes
-        if excludes is None and self.config.exclude_vector:
-            excludes = [self.config.vector_field]
         body = build_hybrid_query(
             query,
             embedding,
@@ -134,7 +180,7 @@ class HybridKit:
             size=size,
             knn_k=k,
             filter_query=filter_query,
-            source_excludes=excludes,
+            source_excludes=self._source_excludes(source_excludes),
             source_includes=source_includes,
             extra_body=extra_body,
         )
@@ -144,3 +190,18 @@ class HybridKit:
             params={"search_pipeline": pipeline_name or self.config.pipeline_name},
         )
         return parse_search_response(response)
+
+    def _require_embedding(self, embedding: Sequence[float]) -> None:
+        if len(embedding) != self.config.dimension:
+            raise ValueError(
+                f"embedding length {len(embedding)} does not match "
+                f"config.dimension {self.config.dimension}; use the same model "
+                "as at index time"
+            )
+
+    def _source_excludes(
+        self, source_excludes: Sequence[str] | None
+    ) -> Sequence[str] | None:
+        if source_excludes is None and self.config.exclude_vector:
+            return [self.config.vector_field]
+        return source_excludes

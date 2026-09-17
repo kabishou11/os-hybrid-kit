@@ -1,6 +1,6 @@
 # Roadmap
 
-## v0.1 (this)
+## v0.1
 
 Shipped on `0.1.x`: a small, typed library you can drop into a RAG stack.
 
@@ -12,14 +12,15 @@ Shipped on `0.1.x`: a small, typed library you can drop into a RAG stack.
 - Thin Dify external-knowledge adapter + VDB stub
 - Docker Compose demo (OpenSearch 2.19.6) and unit tests
 
-## v0.2 prove
+## v0.2 prove (this)
 
-Show the kit works against a real cluster without expanding the product.
+Shipped on `0.2.0`: the kit against a real OpenSearch, still the same product.
 
 - Live OpenSearch integration tests in CI (`docker compose` + `pytest -m integration`)
 - Documented filter / `_source` examples on the demo corpus
-- A short BM25 vs kNN vs hybrid ranking example
-- Packaging notes (`pip install` from git, or PyPI if published)
+- A short BM25 vs kNN vs hybrid ranking example (`examples/compare_retrievers.py`)
+- Thin `lexical_search` / `knn_search` on `HybridKit` (no pipeline; hybrid stays the main path)
+- Packaging notes (`pip install` from git; no PyPI release yet)
 
 ## v0.3 resume highlight
 

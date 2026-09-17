@@ -101,6 +101,38 @@ def test_hybrid_search_sends_pipeline_and_hybrid_body():
     assert result.hits[0].source["content"] == "trail running shoes"
 
 
+def test_lexical_search_sends_match_query_without_pipeline():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3, size=5), client=client)  # type: ignore[arg-type]
+    result = kit.lexical_search("running shoes", size=2)
+    request = client.searches[0]
+    assert request["index"] == "hybrid-index"
+    assert "params" not in request
+    assert request["body"]["size"] == 2
+    assert request["body"]["query"] == {"match": {"content": {"query": "running shoes"}}}
+    assert request["body"]["_source"]["excludes"] == ["embedding"]
+    assert result.hits[0].id == "1"
+
+
+def test_knn_search_sends_raw_knn_without_pipeline():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3, size=5, knn_k=10), client=client)  # type: ignore[arg-type]
+    result = kit.knn_search([0.1, 0.2, 0.3], size=4)
+    request = client.searches[0]
+    assert "params" not in request
+    knn = request["body"]["query"]["knn"]["embedding"]
+    assert knn["vector"] == [0.1, 0.2, 0.3]
+    assert knn["k"] == 10
+    assert request["body"]["size"] == 4
+    assert result.hits[0].id == "1"
+
+
+def test_knn_search_rejects_wrong_embedding_length():
+    kit = HybridKit(HybridConfig(dimension=3), client=FakeClient())  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="embedding length"):
+        kit.knn_search([0.1, 0.2])
+
+
 def test_hybrid_search_rejects_wrong_embedding_length():
     kit = HybridKit(HybridConfig(dimension=3), client=FakeClient())  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="embedding length"):

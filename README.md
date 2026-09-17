@@ -12,6 +12,14 @@ This kit builds the index mapping, upserts that pipeline, and runs `hybrid_searc
 
 Python 3.10+. Docker for the demo cluster.
 
+From git (no PyPI release yet):
+
+```bash
+python -m pip install git+https://github.com/kabishou11/os-hybrid-kit.git
+```
+
+From a clone:
+
 ```bash
 python -m pip install -e .
 docker compose up -d
@@ -35,6 +43,20 @@ sudo sysctl -w vm.max_map_count=262144
 ```
 
 Wait until `curl http://localhost:9200` returns cluster info, then rerun the example. Tear down with `docker compose down`.
+
+## Prove it
+
+[![CI](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml)
+
+Unit tests run on every push. An `integration` job starts OpenSearch 2.19.6 with `docker compose` and runs `pytest -m integration` against it. You do not need Docker on a laptop for unit tests.
+
+```bash
+pytest -m "not integration"   # no cluster
+docker compose up -d
+python examples/compare_retrievers.py
+```
+
+`compare_retrievers.py` prints BM25 vs kNN vs hybrid top-k side by side (RRF or `--fusion weighted`), including a `term` filter and `_source` includes. See [examples/README.md](examples/README.md).
 
 ## Library usage
 
@@ -78,7 +100,9 @@ for hit in result.hits:       # Hit: id, score, source, index
 # result.texts("content") -> list[str]
 ```
 
-`hybrid_search` sends a `hybrid` query with two clauses — `match` on the text field, then `knn` on the vector field — and sets `search_pipeline` so OpenSearch fuses the lists. Embeddings are **yours**; the kit does not call a model or the Neural Search `neural` query. A vector whose length does not match `config.dimension` raises `ValueError`.
+`hybrid_search` sends a `hybrid` query with two clauses — `match` on the text field, then `knn` on the vector field — and sets `search_pipeline` so OpenSearch fuses the lists. That is the main path. `lexical_search(query)` and `knn_search(embedding)` hit the same index without a pipeline (pure BM25 `match`, raw `knn`). All three accept `filter_query` and `_source` includes/excludes.
+
+Embeddings are **yours**; the kit does not call a model or the Neural Search `neural` query. A vector whose length does not match `config.dimension` raises `ValueError`.
 
 `exists_index` / `ensure_index` / `delete_index` operate on `config.index`. `from_env()` reads `OPENSEARCH_HOSTS` (comma-separated, takes precedence) or `OPENSEARCH_URL`, plus `OPENSEARCH_INDEX` and `OPENSEARCH_DIM`. Keyword arguments override the environment.
 
@@ -88,7 +112,9 @@ for hit in result.hits:       # Hit: id, score, source, index
 from os_hybrid_kit import (
     build_hybrid_query,
     build_index_body,
+    build_knn_query,
     build_knn_vector_property,
+    build_lexical_query,
     build_opensearch_client,
     build_pipeline_body,
     build_rrf_pipeline_body,
@@ -120,13 +146,15 @@ RRF scores are small (they are sums of `1 / (rank_constant + rank)`). If Dify's 
 
 ```bash
 python -m pip install -e ".[dev]"
-pytest                 # unit tests; mapping/pipeline builders do not need OpenSearch
-pytest -m integration  # live cluster at OPENSEARCH_URL (default http://localhost:9200)
+pytest -m "not integration"   # unit tests; no Docker / live cluster
+pytest -m integration         # live cluster; CI sets RUN_INTEGRATION=1
 ```
+
+Live tests skip unless `RUN_INTEGRATION=1`. Default URL is `OPENSEARCH_URL` or `http://localhost:9200`.
 
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md): v0.1 (this) → v0.2 prove → v0.3 resume highlight → v0.4+ optional.
+See [ROADMAP.md](ROADMAP.md): v0.1 → v0.2 prove (this) → v0.3 resume highlight → v0.4+ optional.
 
 ## What this is not
 

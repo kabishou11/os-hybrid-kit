@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from os_hybrid_kit import build_hybrid_query, parse_search_response
+from os_hybrid_kit import (
+    build_hybrid_query,
+    build_knn_query,
+    build_lexical_query,
+    parse_search_response,
+)
 
 
 def test_hybrid_query_clause_order_is_lexical_then_knn():
@@ -31,6 +36,54 @@ def test_hybrid_query_defaults_knn_k_to_size():
     )
     knn = body["query"]["hybrid"]["queries"][1]["knn"]["embedding"]
     assert knn["k"] == 7
+
+
+def test_lexical_query_is_match_without_pipeline_fields():
+    body = build_lexical_query("running shoes", text_field="content", size=3)
+    assert body == {
+        "size": 3,
+        "query": {"match": {"content": {"query": "running shoes"}}},
+    }
+
+
+def test_lexical_query_wraps_filter_in_bool():
+    body = build_lexical_query(
+        "q",
+        text_field="content",
+        filter_query={"term": {"category": "shoes"}},
+        source_includes=["title", "content"],
+    )
+    assert body["query"] == {
+        "bool": {
+            "must": [{"match": {"content": {"query": "q"}}}],
+            "filter": [{"term": {"category": "shoes"}}],
+        }
+    }
+    assert body["_source"]["includes"] == ["title", "content"]
+
+
+def test_knn_query_is_raw_knn():
+    body = build_knn_query(
+        [0.1, 0.2],
+        vector_field="embedding",
+        size=4,
+        knn_k=8,
+        source_excludes=["embedding"],
+    )
+    assert body["size"] == 4
+    assert body["query"] == {"knn": {"embedding": {"vector": [0.1, 0.2], "k": 8}}}
+    assert body["_source"]["excludes"] == ["embedding"]
+
+
+def test_knn_query_puts_filter_on_knn_clause():
+    body = build_knn_query(
+        [1.0],
+        vector_field="embedding",
+        filter_query={"term": {"category": "shoes"}},
+    )
+    knn = body["query"]["knn"]["embedding"]
+    assert knn["filter"] == {"term": {"category": "shoes"}}
+    assert knn["k"] == 10
 
 
 def test_hybrid_query_optional_filter_and_source_excludes():
