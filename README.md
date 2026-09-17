@@ -5,9 +5,9 @@ Portable Python library for **OpenSearch hybrid search**: BM25 lexical match plu
 [![CI](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**v0.3.0** — facade frozen. You bring the embedding model; the kit builds the mapping, upserts the search pipeline, and runs hybrid search.
+**v0.4.0** — facade frozen; optional LangChain and LlamaIndex retrievers. You bring the embedding model; the kit builds the mapping, upserts the search pipeline, and runs hybrid search.
 
-[CHANGELOG](CHANGELOG.md) · [Production checklist](docs/PRODUCTION.md) · [Relevance and latency notes](docs/NOTES.md) · [Roadmap](ROADMAP.md)
+[CHANGELOG](CHANGELOG.md) · [Production checklist](docs/PRODUCTION.md) · [Relevance and latency notes](docs/NOTES.md) · [Integrations](docs/INTEGRATIONS.md) · [Roadmap](ROADMAP.md)
 
 ## Why
 
@@ -106,7 +106,7 @@ from os_hybrid_kit import (
 
 ## Stable API (0.3)
 
-These names are frozen for 0.3.x. Additive changes may appear; breaking renames will not.
+These names are frozen for 0.3.x+. Additive extras (0.4 LangChain / LlamaIndex retrievers) live in `os_hybrid_kit.integrations` and do not rename this facade. Breaking renames will not.
 
 | Kind | Names |
 | --- | --- |
@@ -127,6 +127,37 @@ These names are frozen for 0.3.x. Additive changes may appear; breaking renames 
 
 Default weighted weights are `lexical_weight=0.3`, `vector_weight=0.7` and must sum to 1.0. Clause order is lexical then kNN, so those weights line up with the hybrid query.
 
+## Integrations (optional)
+
+Thin retrievers around the frozen `HybridKit` facade. Core install does not pull these in.
+
+```bash
+pip install "os-hybrid-kit[langchain]"
+pip install "os-hybrid-kit[llama-index]"
+```
+
+```python
+from os_hybrid_kit import HybridConfig, HybridKit
+from os_hybrid_kit.integrations.langchain import HybridKitRetriever
+
+kit = HybridKit(HybridConfig(dimension=384, index="docs"))
+retriever = HybridKitRetriever(
+    kit,
+    embed_fn,  # (text: str) -> Sequence[float]
+    search_kwargs={"size": 10, "mode": "hybrid"},  # hybrid | lexical | knn
+)
+docs = retriever.invoke("waterproof trail shoes")
+```
+
+```python
+from os_hybrid_kit.integrations.llama_index import HybridKitRetriever
+
+retriever = HybridKitRetriever(kit, embed_fn, search_kwargs={"size": 10})
+nodes = retriever.retrieve("waterproof trail shoes")
+```
+
+Importing a submodule without its extra raises `InstallError`. Details: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
+
 ## Dify adapter
 
 `adapters/dify/` is a stub, not a marketplace plugin.
@@ -138,12 +169,14 @@ RRF scores are small (they are sums of `1 / (rank_constant + rank)`). If Dify's 
 
 ## Tests
 
-Unit tests run on every push. An `integration` job starts OpenSearch 2.19.6 with `docker compose` and runs `pytest -m integration`. You do not need Docker for unit tests.
+Unit tests run on every push. An `integration` job starts OpenSearch 2.19.6 with `docker compose` and runs `pytest -m integration`. You do not need Docker for unit tests. Retriever tests skip unless the matching extra is installed.
 
 ```bash
 python -m pip install -e ".[dev]"
 pytest -m "not integration"   # unit tests; no Docker / live cluster
 pytest -m integration         # live cluster; CI sets RUN_INTEGRATION=1
+# optional retrievers:
+python -m pip install -e ".[dev,langchain,llama-index]"
 ```
 
 Live tests skip unless `RUN_INTEGRATION=1`. Default URL is `OPENSEARCH_URL` or `http://localhost:9200`.
