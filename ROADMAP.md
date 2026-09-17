@@ -12,7 +12,7 @@ Shipped on `0.1.x`: a small, typed library you can drop into a RAG stack.
 - Thin Dify external-knowledge adapter + VDB stub
 - Docker Compose demo (OpenSearch 2.19.6) and unit tests
 
-## v0.2 prove (this)
+## v0.2 prove
 
 Shipped on `0.2.0`: the kit against a real OpenSearch, still the same product.
 
@@ -24,12 +24,15 @@ Shipped on `0.2.0`: the kit against a real OpenSearch, still the same product.
 
 ## v0.3 resume highlight
 
-Make the public API and write-up something you can put on a CV.
+Shipped on `0.3.0`: freeze the facade and write-up so the repo is CV-citable. Same product; no breaking renames.
 
-- Freeze the v0.1 facade; keep a short changelog
-- Small relevance / latency notes (not a full eval harness)
-- Production checklist: dimension mismatch, pipeline version, RRF vs Dify score threshold
-- Optional: typed protocol for `embed_fn`
+- Facade frozen: `HybridKit`, `HybridConfig`, `FusionMethod`, `Hit`, `SearchResult`
+- Methods frozen: `ensure_index`, `exists_index`, `delete_index`, `upsert_pipeline`, `index_documents`, `lexical_search`, `knn_search`, `hybrid_search`
+- [CHANGELOG.md](CHANGELOG.md)
+- [docs/PRODUCTION.md](docs/PRODUCTION.md) — dimension, pipeline version, RRF vs score threshold, `index.knn`, auth, refresh
+- [docs/NOTES.md](docs/NOTES.md) — when hybrid beats BM25/kNN, how to measure latency, filter / `_source`
+- `EmbedFn` protocol for query embedders (Dify adapter uses it)
+- README Stable API (0.3) note
 
 ## v0.4+ (optional)
 

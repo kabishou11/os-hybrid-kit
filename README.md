@@ -2,25 +2,24 @@
 
 Portable Python library for **OpenSearch hybrid search**: BM25 lexical match plus kNN vectors, fused with **RRF** or **weighted score normalization**.
 
+[![CI](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+**v0.3.0** — facade frozen. You bring the embedding model; the kit builds the mapping, upserts the search pipeline, and runs hybrid search.
+
+[CHANGELOG](CHANGELOG.md) · [Production checklist](docs/PRODUCTION.md) · [Relevance and latency notes](docs/NOTES.md) · [Roadmap](ROADMAP.md)
+
 ## Why
 
 Keyword scores (BM25) and vector similarity live on different scales. Adding them naively ranks the wrong documents. OpenSearch 2.x solves this with a `hybrid` query and a **search pipeline** that fuses the two lists after the query phase.
 
-This kit builds the index mapping, upserts that pipeline, and runs `hybrid_search(query, embedding, ...)`. You bring the embedding model.
-
 ## Install and 5-minute quickstart
 
-Python 3.10+. Docker for the demo cluster.
-
-From git (no PyPI release yet):
+Python 3.10+. Docker for the demo cluster. No PyPI release yet.
 
 ```bash
 python -m pip install git+https://github.com/kabishou11/os-hybrid-kit.git
-```
-
-From a clone:
-
-```bash
+# or from a clone:
 python -m pip install -e .
 docker compose up -d
 python examples/seed_and_search.py
@@ -29,38 +28,18 @@ python examples/seed_and_search.py
 The demo uses OpenSearch **2.19.6** (single node, security plugin off, `http://localhost:9200`) so both RRF and weighted fusion work. It hashes tokens into a tiny vector so you do not need an embedding model.
 
 ```bash
-# Weighted min-max instead of RRF
 python examples/seed_and_search.py --fusion weighted
-
-# Custom query
 python examples/seed_and_search.py --query "waterproof boots for muddy paths"
+python examples/compare_retrievers.py   # BM25 vs kNN vs hybrid
 ```
 
-If OpenSearch fails to boot on Linux, raise the mmap limit once:
-
-```bash
-sudo sysctl -w vm.max_map_count=262144
-```
-
-Wait until `curl http://localhost:9200` returns cluster info, then rerun the example. Tear down with `docker compose down`.
-
-## Prove it
-
-[![CI](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml)
-
-Unit tests run on every push. An `integration` job starts OpenSearch 2.19.6 with `docker compose` and runs `pytest -m integration` against it. You do not need Docker on a laptop for unit tests.
-
-```bash
-pytest -m "not integration"   # no cluster
-docker compose up -d
-python examples/compare_retrievers.py
-```
-
-`compare_retrievers.py` prints BM25 vs kNN vs hybrid top-k side by side (RRF or `--fusion weighted`), including a `term` filter and `_source` includes. See [examples/README.md](examples/README.md).
+If OpenSearch fails to boot on Linux: `sudo sysctl -w vm.max_map_count=262144`. Wait until `curl http://localhost:9200` returns cluster info. Tear down with `docker compose down`.
 
 ## Library usage
 
-**Primary facade:** `HybridConfig`, `FusionMethod`, `HybridKit`, `Hit`, `SearchResult`.
+**Primary facade:** `HybridKit`, `HybridConfig`, `FusionMethod`, `Hit`, `SearchResult`.
+
+**Methods:** `ensure_index`, `exists_index`, `delete_index`, `upsert_pipeline`, `index_documents`, `lexical_search`, `knn_search`, `hybrid_search`.
 
 ```python
 from os_hybrid_kit import FusionMethod, HybridConfig, HybridKit
@@ -102,7 +81,7 @@ for hit in result.hits:       # Hit: id, score, source, index
 
 `hybrid_search` sends a `hybrid` query with two clauses — `match` on the text field, then `knn` on the vector field — and sets `search_pipeline` so OpenSearch fuses the lists. That is the main path. `lexical_search(query)` and `knn_search(embedding)` hit the same index without a pipeline (pure BM25 `match`, raw `knn`). All three accept `filter_query` and `_source` includes/excludes.
 
-Embeddings are **yours**; the kit does not call a model or the Neural Search `neural` query. A vector whose length does not match `config.dimension` raises `ValueError`.
+Embeddings are **yours**; the kit does not call a model or the Neural Search `neural` query. Pass an `EmbedFn` (`(text: str) -> Sequence[float]`) wherever you need to embed a query (the Dify adapter does). A vector whose length does not match `config.dimension` raises `ValueError`.
 
 `exists_index` / `ensure_index` / `delete_index` operate on `config.index`. `from_env()` reads `OPENSEARCH_HOSTS` (comma-separated, takes precedence) or `OPENSEARCH_URL`, plus `OPENSEARCH_INDEX` and `OPENSEARCH_DIM`. Keyword arguments override the environment.
 
@@ -110,6 +89,7 @@ Embeddings are **yours**; the kit does not call a model or the Neural Search `ne
 
 ```python
 from os_hybrid_kit import (
+    EmbedFn,
     build_hybrid_query,
     build_index_body,
     build_knn_query,
@@ -124,6 +104,20 @@ from os_hybrid_kit import (
 )
 ```
 
+## Stable API (0.3)
+
+These names are frozen for 0.3.x. Additive changes may appear; breaking renames will not.
+
+| Kind | Names |
+| --- | --- |
+| Types | `HybridKit`, `HybridConfig`, `FusionMethod`, `Hit`, `SearchResult` |
+| Methods | `ensure_index`, `exists_index`, `delete_index`, `upsert_pipeline`, `index_documents`, `lexical_search`, `knn_search`, `hybrid_search` |
+| Fusion values | `FusionMethod.RRF` (`"rrf"`), `FusionMethod.WEIGHTED` (`"weighted"`) |
+| Typing | `EmbedFn` (optional protocol for query embedders) |
+| Advanced | `build_*` helpers, `parse_search_response`, `upsert_search_pipeline`, `build_opensearch_client` |
+
+`Hit` fields: `id`, `score`, `source`, `index`. `SearchResult` fields: `hits`, `total`, `max_score`, plus `texts(field)`.
+
 ## Fusion
 
 | Fusion | Processor | Combines | OpenSearch |
@@ -137,12 +131,14 @@ Default weighted weights are `lexical_weight=0.3`, `vector_weight=0.7` and must 
 
 `adapters/dify/` is a stub, not a marketplace plugin.
 
-- **External knowledge:** `retrieve(kit, request, embed_fn)` accepts Dify's `POST /retrieval` JSON and returns `{ "records": [ { content, score, title, metadata } ] }`. Dify only sends text, so you pass an `embed_fn`.
+- **External knowledge:** `retrieve(kit, request, embed_fn)` accepts Dify's `POST /retrieval` JSON and returns `{ "records": [ { content, score, title, metadata } ] }`. Dify only sends text, so you pass an `EmbedFn`.
 - **VDB stub:** `HybridVectorStore` exposes `add_texts`, `hybrid_search`, `search_by_vector`, and `search_by_full_text` for a plugin you maintain.
 
-RRF scores are small (they are sums of `1 / (rank_constant + rank)`). If Dify's score threshold is `0.5`, RRF hits will be filtered out. Use threshold `0` with RRF, or switch to weighted fusion (scores are typically in `[0, 1]`).
+RRF scores are small (they are sums of `1 / (rank_constant + rank)`). If Dify's score threshold is `0.5`, RRF hits will be filtered out. Use threshold `0` with RRF, or switch to weighted fusion (scores are typically in `[0, 1]`). Details: [docs/PRODUCTION.md](docs/PRODUCTION.md).
 
 ## Tests
+
+Unit tests run on every push. An `integration` job starts OpenSearch 2.19.6 with `docker compose` and runs `pytest -m integration`. You do not need Docker for unit tests.
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -151,10 +147,6 @@ pytest -m integration         # live cluster; CI sets RUN_INTEGRATION=1
 ```
 
 Live tests skip unless `RUN_INTEGRATION=1`. Default URL is `OPENSEARCH_URL` or `http://localhost:9200`.
-
-## Roadmap
-
-See [ROADMAP.md](ROADMAP.md): v0.1 → v0.2 prove (this) → v0.3 resume highlight → v0.4+ optional.
 
 ## What this is not
 

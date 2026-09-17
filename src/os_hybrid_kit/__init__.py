@@ -15,10 +15,12 @@ from os_hybrid_kit.pipeline import (
 )
 from os_hybrid_kit.query import build_hybrid_query, build_knn_query, build_lexical_query
 from os_hybrid_kit.results import Hit, SearchResult, parse_search_response
+from os_hybrid_kit.types import EmbedFn
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
+    "EmbedFn",
     "FusionMethod",
     "Hit",
     "HybridConfig",

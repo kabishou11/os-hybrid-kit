@@ -1,0 +1,70 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.3.0] - 2026-09-17
+
+Resume-ready freeze of the v0.1 facade. No breaking renames.
+
+### Added
+
+- `CHANGELOG.md`
+- `docs/PRODUCTION.md` — production checklist (dimension, OpenSearch version vs fusion processors, RRF vs score thresholds, `index.knn` / engine, pipeline names, HTTPS auth, bulk refresh)
+- `docs/NOTES.md` — when hybrid beats BM25-only / kNN-only, how to read latency, filter / `_source` tips
+- `EmbedFn` (`typing.Protocol`) for query embedders; used by the Dify adapter; exported from `os_hybrid_kit`
+- README Stable API (0.3) note and links to changelog, production checklist, notes, and roadmap
+
+### Changed
+
+- Package version `0.3.0`
+- `ROADMAP.md` marks v0.3 shipped
+
+## [0.2.0] - 2026-09-17
+
+Prove the kit against a live OpenSearch without expanding product scope.
+
+### Added
+
+- CI `integration` job: `docker compose` OpenSearch 2.19.6, then `pytest -m integration`
+- `HybridKit.lexical_search` (BM25 `match`, no search pipeline)
+- `HybridKit.knn_search` (raw `knn`, no search pipeline)
+- `examples/compare_retrievers.py` — BM25 vs kNN vs hybrid top-k, plus a `term` filter and `_source` includes
+- Git install note (`pip install git+https://github.com/kabishou11/os-hybrid-kit.git`)
+
+### Changed
+
+- Live tests cover lexical / kNN / hybrid on the same index
+- README "Prove it" section and CI badge
+
+## [0.1.1] - 2026-09-17
+
+Public API and README aligned to one facade.
+
+### Added
+
+- `HybridConfig.from_env()` — `OPENSEARCH_HOSTS` / `OPENSEARCH_URL`, `OPENSEARCH_INDEX`, `OPENSEARCH_DIM`
+- `HybridKit.exists_index` and `HybridKit.delete_index`
+- `ROADMAP.md`
+
+### Changed
+
+- Clearer `ValueError` when a query vector length does not match `config.dimension`
+- README rewritten around `HybridKit` / `HybridConfig` / `FusionMethod` / `Hit` / `SearchResult`
+
+## [0.1.0] - 2026-09-17
+
+Initial library.
+
+### Added
+
+- `HybridKit` facade: index mapping (`knn_vector` + BM25 text), search-pipeline upsert, bulk index, `hybrid_search`
+- Fusion: RRF (`score-ranker-processor`, OpenSearch 2.19+) and weighted normalization (`normalization-processor`, 2.11+)
+- Builders: `build_index_body`, `build_pipeline_body`, `build_hybrid_query`, and related helpers
+- Thin Dify adapter (`adapters/dify/`): external-knowledge `/retrieval` plus a VDB stub
+- Docker Compose demo (OpenSearch 2.19.6, security plugin off) and `examples/seed_and_search.py`
+- Unit tests and GitHub Actions lint/unit CI
