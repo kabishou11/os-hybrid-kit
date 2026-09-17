@@ -17,7 +17,8 @@ Missing extras raise `os_hybrid_kit.integrations.InstallError` on import of the 
 | --- | --- |
 | `mode` | `hybrid` (default), `lexical` (BM25, no embed), or `knn` |
 | `size` | result count (otherwise `HybridConfig.size`) |
-| `filter` | OpenSearch filter clause (also accepts `filter_query`) |
+| `filter` | OpenSearch filter clause. LangChain-style alias of `filter_query`; preferred in `search_kwargs` |
+| `filter_query` | Same clause, kit-native key. Setting both `filter` and `filter_query` raises `ValueError` |
 
 Other `HybridKit` search keywords (`knn_k`, `source_includes`, `extra_body`, …) pass through.
 

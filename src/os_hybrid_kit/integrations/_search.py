@@ -20,10 +20,11 @@ def run_kit_search(
 ) -> SearchResult:
     """Run hybrid, lexical, or kNN search on ``kit``.
 
-    ``search_kwargs`` may include ``size``, ``filter`` (or ``filter_query``),
-    ``mode`` (``hybrid`` / ``lexical`` / ``knn``), and other HybridKit search
-    keyword arguments (``knn_k``, ``source_includes``, ``extra_body``, ...).
-    Lexical mode does not call ``embed_fn``.
+    ``search_kwargs`` may include ``size``, ``filter`` (LangChain-style alias
+    of ``filter_query``), ``mode`` (``hybrid`` / ``lexical`` / ``knn``), and
+    other HybridKit search keyword arguments (``knn_k``, ``source_includes``,
+    ``extra_body``, ...). Setting both ``filter`` and ``filter_query`` raises
+    ``ValueError``. Lexical mode does not call ``embed_fn``.
     """
     kwargs = dict(search_kwargs or {})
     mode = kwargs.pop("mode", "hybrid")
@@ -31,11 +32,14 @@ def run_kit_search(
         raise ValueError(
             f"unknown search mode {mode!r}; expected 'hybrid', 'lexical', or 'knn'"
         )
+    if "filter" in kwargs and "filter_query" in kwargs:
+        raise ValueError(
+            "search_kwargs cannot set both 'filter' and 'filter_query'; "
+            "'filter' is the LangChain-style alias of 'filter_query'"
+        )
     filter_query = kwargs.pop("filter", None)
-    if "filter_query" in kwargs:
-        extra = kwargs.pop("filter_query")
-        if filter_query is None:
-            filter_query = extra
+    if filter_query is None:
+        filter_query = kwargs.pop("filter_query", None)
     if filter_query is not None:
         kwargs["filter_query"] = filter_query
 

@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from os_hybrid_kit.client import HybridKit
-from os_hybrid_kit.results import parse_search_response
 
 
 @dataclass
@@ -73,28 +72,11 @@ class HybridVectorStore:
         *,
         top_k: int = 4,
     ) -> list[Document]:
-        body = {
-            "size": top_k,
-            "query": {
-                "knn": {
-                    self.kit.config.vector_field: {
-                        "vector": list(query_vector),
-                        "k": top_k,
-                    }
-                }
-            },
-        }
-        response = self.kit.client.search(index=self.kit.config.index, body=body)
-        result = parse_search_response(response)
+        result = self.kit.knn_search(query_vector, size=top_k)
         return [_hit_to_document(self.kit, hit, self.title_field) for hit in result.hits]
 
     def search_by_full_text(self, query: str, *, top_k: int = 4) -> list[Document]:
-        body = {
-            "size": top_k,
-            "query": {"match": {self.kit.config.text_field: {"query": query}}},
-        }
-        response = self.kit.client.search(index=self.kit.config.index, body=body)
-        result = parse_search_response(response)
+        result = self.kit.lexical_search(query, size=top_k)
         return [_hit_to_document(self.kit, hit, self.title_field) for hit in result.hits]
 
 
