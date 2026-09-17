@@ -17,7 +17,7 @@ from os_hybrid_kit.query import build_hybrid_query, build_knn_query, build_lexic
 from os_hybrid_kit.results import Hit, SearchResult, parse_search_response
 from os_hybrid_kit.types import EmbedFn
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 __all__ = [
     "EmbedFn",

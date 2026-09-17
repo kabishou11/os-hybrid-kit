@@ -83,3 +83,15 @@ def test_lexical_knn_and_hybrid_return_hits(live_kit: HybridKit):
     assert lexical.hits[0].id == "1"
     assert knn.hits[0].id == "2"
     assert {hit.id for hit in hybrid.hits} >= {"1", "2"}
+
+
+def test_put_and_get_alias_then_search_via_alias(live_kit: HybridKit):
+    alias = "os-hybrid-kit-itest-alias"
+    live_kit.put_alias(alias)
+    mapping = live_kit.get_alias(alias)
+    assert live_kit.config.index in mapping
+    aliased = live_kit.with_index(alias)
+    result = aliased.lexical_search("running shoes", size=2)
+    assert result.hits
+    assert result.hits[0].id == "1"
+    live_kit.delete_alias(alias)

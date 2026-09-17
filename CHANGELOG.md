@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-17
+
+Ops helpers and a light local timing script around the frozen v0.3 facade. No breaking renames.
+
+### Added
+
+- `HybridKit.put_alias` / `delete_alias` / `get_alias` / `swap_alias` — thin OpenSearch alias helpers (cutover, not a full index-management product)
+- `HybridKit.with_index(name)` — clone a kit onto another index or alias, sharing the client
+- `examples/benchmark_retrievers.py` — BM25 vs kNN vs hybrid hit ids, scores, and wall time (ms) on a fixed demo corpus
+- README aliases / cutover and benchmark notes
+
+### Changed
+
+- Package version `0.5.0`
+- `ROADMAP.md` marks alias helpers and the light benchmark as shipped; Neural Search and Dify marketplace stay unshipped
+
 ## [0.4.0] - 2026-09-17
 
 Optional retriever extras around the frozen v0.3 facade. No breaking renames.

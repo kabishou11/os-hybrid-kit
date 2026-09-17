@@ -42,12 +42,18 @@ Shipped on `0.4.0`: optional retriever wrappers. Same frozen facade; extras are 
 - LlamaIndex `HybridKitRetriever` (`pip install os-hybrid-kit[llama-index]`)
 - [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)
 
+## v0.5 ops + prove
+
+Shipped on `0.5.0`: alias helpers and a light retriever timing script. Same frozen facade.
+
+- `HybridKit.put_alias` / `delete_alias` / `get_alias` / `swap_alias`
+- `HybridKit.with_index` so `config.index` can be an alias for zero-downtime reads
+- `examples/benchmark_retrievers.py` — BM25 vs kNN vs hybrid wall times on a fixed corpus (not an eval harness)
+
 Still optional / unshipped:
 
 - Dify marketplace plugin packaging
 - Neural Search `neural` query (model hosted in OpenSearch)
-- Multi-index / alias helpers
-- Benchmarks vs BM25-only and kNN-only (see `examples/compare_retrievers.py`)
 
 ## Non-goals
 

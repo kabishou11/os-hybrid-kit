@@ -17,6 +17,12 @@ class FusionMethod(str, Enum):
 class HybridConfig(BaseModel):
     """Connection, mapping, pipeline, and search defaults for hybrid search.
 
+    ``index`` is the OpenSearch target for mapping, bulk, and search. It may
+    be a concrete index name or an alias (typical for zero-downtime reads
+    after ``HybridKit.put_alias`` / ``swap_alias``). Use
+    ``HybridKit.with_index`` to clone a kit onto an alias without mutating
+    this config.
+
     OpenSearch versions:
       * hybrid query + ``normalization-processor``: 2.11+
       * RRF via ``score-ranker-processor``: 2.19+
