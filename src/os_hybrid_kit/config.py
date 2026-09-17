@@ -31,8 +31,8 @@ class HybridConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     hosts: list[str] = Field(default_factory=lambda: ["http://localhost:9200"])
-    username: str | None = None
-    password: str | None = None
+    username: str | None = Field(default=None, repr=False)
+    password: str | None = Field(default=None, repr=False)
     use_ssl: bool = False
     verify_certs: bool = False
     ssl_show_warn: bool = False
@@ -120,6 +120,14 @@ class HybridConfig(BaseModel):
 
         data.update(overrides)
         return cls(**data)
+
+    def __repr__(self) -> str:
+        auth = "set" if self.username is not None else "off"
+        return (
+            f"HybridConfig(hosts={self.hosts!r}, index={self.index!r}, "
+            f"dimension={self.dimension}, fusion={self.fusion.value!r}, "
+            f"pipeline_name={self.pipeline_name!r}, auth={auth!r})"
+        )
 
     @property
     def weighted_weights(self) -> list[float]:

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "os-hybrid-kit"
-version = "0.5.0"
+version = "0.5.1"
 description = "Portable OpenSearch hybrid search (BM25 + kNN + RRF / weighted normalization) with a thin Dify adapter and optional LangChain / LlamaIndex retrievers."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -29,6 +29,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+    "pytest-cov>=5.0",
     "ruff>=0.6",
 ]
 dify = []

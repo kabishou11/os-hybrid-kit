@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from os_hybrid_kit import (
+    Hit,
+    SearchResult,
     build_hybrid_query,
     build_knn_query,
     build_lexical_query,
@@ -134,3 +136,20 @@ def test_parse_search_response_accepts_integer_total():
     result = parse_search_response({"hits": {"total": 0, "hits": []}})
     assert result.total == 0
     assert result.hits == []
+
+
+def test_hit_can_be_constructed_without_raw():
+    hit = Hit(id="1", score=1.2, source={"content": "hello"}, index="docs")
+    assert hit.raw == {}
+    assert hit.id == "1"
+    assert hit.source["content"] == "hello"
+
+
+def test_search_result_texts_and_optional_raw():
+    hits = [
+        Hit(id="1", score=1.0, source={"content": "hello"}, index="docs"),
+        Hit(id="2", score=0.5, source={}, index="docs"),
+    ]
+    result = SearchResult(hits=hits, total=2, max_score=1.0)
+    assert result.raw == {}
+    assert result.texts("content") == ["hello", ""]

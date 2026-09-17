@@ -5,7 +5,7 @@ Portable Python library for **OpenSearch hybrid search**: BM25 lexical match plu
 [![CI](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**v0.5.0** — facade frozen; alias helpers and a light local benchmark. You bring the embedding model; the kit builds the mapping, upserts the search pipeline, and runs hybrid search.
+**v0.5.1** — facade frozen; 0.5.x is polish and hardening. You bring the embedding model; the kit builds the mapping, upserts the search pipeline, and runs hybrid search.
 
 [CHANGELOG](CHANGELOG.md) · [Production checklist](docs/PRODUCTION.md) · [Relevance and latency notes](docs/NOTES.md) · [Integrations](docs/INTEGRATIONS.md) · [Roadmap](ROADMAP.md)
 
@@ -34,7 +34,7 @@ python examples/compare_retrievers.py   # BM25 vs kNN vs hybrid ranking
 python examples/benchmark_retrievers.py # same three modes, wall time (ms)
 ```
 
-If OpenSearch fails to boot on Linux: `sudo sysctl -w vm.max_map_count=262144`. Wait until `curl http://localhost:9200` returns cluster info. Tear down with `docker compose down`.
+If OpenSearch fails to boot on Linux: `sudo sysctl -w vm.max_map_count=262144`. Wait until `curl http://localhost:9200` returns cluster info. Tear down with `docker compose down` (or `make demo-down`). Example scripts exit with a `docker compose up -d` hint if the cluster is down.
 
 ## Library usage
 
@@ -52,8 +52,10 @@ config = HybridConfig(
     text_field="content",
     vector_field="embedding",
     fusion=FusionMethod.RRF,  # or FusionMethod.WEIGHTED
+    pipeline_name="hybrid-search-pipeline",
     lexical_weight=0.3,       # weighted fusion; clause order is lexical then kNN
     vector_weight=0.7,
+    exclude_vector=True,      # drop the vector field from _source on search
 )
 # Or: HybridConfig.from_env()  # OPENSEARCH_URL / OPENSEARCH_HOSTS,
 #                              # OPENSEARCH_INDEX, OPENSEARCH_DIM
@@ -75,14 +77,14 @@ kit.index_documents(
 )
 
 result = kit.hybrid_search("running shoes", query_vector, size=10)
-for hit in result.hits:       # Hit: id, score, source, index
+for hit in result.hits:       # Hit: id, score, source, index, raw
     print(hit.score, hit.source["content"])
 # result.texts("content") -> list[str]
 ```
 
 `hybrid_search` sends a `hybrid` query with two clauses — `match` on the text field, then `knn` on the vector field — and sets `search_pipeline` so OpenSearch fuses the lists. That is the main path. `lexical_search(query)` and `knn_search(embedding)` hit the same index without a pipeline (pure BM25 `match`, raw `knn`). All three accept `filter_query` and `_source` includes/excludes.
 
-Embeddings are **yours**; the kit does not call a model or the Neural Search `neural` query. Pass an `EmbedFn` (`(text: str) -> Sequence[float]`) wherever you need to embed a query (the Dify adapter does). A vector whose length does not match `config.dimension` raises `ValueError`.
+Embeddings are **yours**; the kit does not call a model or the Neural Search `neural` query. Pass an `EmbedFn` (`(text: str) -> Sequence[float]`) wherever you need to embed a query (the Dify adapter does). An empty embedding, or a vector whose length does not match `config.dimension`, raises `ValueError`. Empty or whitespace-only `query`, alias, and index names on `lexical_search` / `hybrid_search` / alias helpers / `with_index` also raise `ValueError` before OpenSearch is called.
 
 `exists_index` / `ensure_index` / `delete_index` operate on `config.index`. `from_env()` reads `OPENSEARCH_HOSTS` (comma-separated, takes precedence) or `OPENSEARCH_URL`, plus `OPENSEARCH_INDEX` and `OPENSEARCH_DIM`. Keyword arguments override the environment.
 
@@ -146,7 +148,7 @@ These names are frozen for 0.3.x+. Additive extras (0.4 LangChain / LlamaIndex r
 | Typing | `EmbedFn` (optional protocol for query embedders) |
 | Advanced | `build_*` helpers, `parse_search_response`, `upsert_search_pipeline`, `build_opensearch_client` |
 
-`Hit` fields: `id`, `score`, `source`, `index`. `SearchResult` fields: `hits`, `total`, `max_score`, plus `texts(field)`.
+`Hit` fields: `id`, `score`, `source`, `index`, and `raw` (the original OpenSearch hit dict; optional if you construct a `Hit` yourself — `parse_search_response` always fills it). `SearchResult` fields: `hits`, `total`, `max_score`, `raw`, plus `texts(field)` which returns `str(hit.source.get(field, ""))` for each hit.
 
 ## Fusion
 
@@ -204,6 +206,7 @@ Unit tests run on every push. An `integration` job starts OpenSearch 2.19.6 with
 ```bash
 python -m pip install -e ".[dev]"
 pytest -m "not integration"   # unit tests; no Docker / live cluster
+# or: make test && make lint
 pytest -m integration         # live cluster; CI sets RUN_INTEGRATION=1
 # optional retrievers:
 python -m pip install -e ".[dev,langchain,llama-index]"

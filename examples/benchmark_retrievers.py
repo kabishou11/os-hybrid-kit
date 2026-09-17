@@ -23,7 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from embed import embed_text  # noqa: E402
+from embed import embed_documents, embed_text, wait_for_opensearch  # noqa: E402
 from os_hybrid_kit import FusionMethod, HybridConfig, HybridKit, SearchResult  # noqa: E402
 
 DEMO_INDEX = "hybrid-bench"
@@ -89,19 +89,6 @@ QUERIES = [
 ]
 
 
-def wait_for_cluster(kit: HybridKit, timeout: float) -> None:
-    deadline = time.time() + timeout
-    last_error: Exception | None = None
-    while time.time() < deadline:
-        try:
-            if kit.client.ping():
-                return
-        except Exception as exc:
-            last_error = exc
-        time.sleep(2)
-    raise SystemExit(f"OpenSearch did not become ready: {last_error}")
-
-
 def _hits_cell(result: SearchResult) -> str:
     return ", ".join(f"{hit.id}:{hit.score:.4f}" for hit in result.hits)
 
@@ -115,6 +102,7 @@ def main() -> int:
         description="Time BM25, kNN, and hybrid on a fixed local corpus (wall-clock ms)."
     )
     parser.add_argument(
+        "--host",
         "--url",
         default=os.environ.get("OPENSEARCH_URL", "http://localhost:9200"),
         help="OpenSearch URL (or OPENSEARCH_URL).",
@@ -131,13 +119,18 @@ def main() -> int:
         default="rrf",
         help="RRF needs OpenSearch 2.19+. Weighted min-max works on 2.11+.",
     )
-    parser.add_argument("--timeout", type=float, default=120.0)
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=120.0,
+        help="Seconds to wait for OpenSearch to accept connections.",
+    )
     args = parser.parse_args()
     if args.n_queries < 1:
         raise SystemExit("--n-queries must be >= 1")
 
     config = HybridConfig(
-        hosts=[args.url],
+        hosts=[args.host],
         index=DEMO_INDEX,
         dimension=DIMENSION,
         fusion=FusionMethod(args.fusion),
@@ -146,21 +139,15 @@ def main() -> int:
         vector_weight=0.5,
         size=SIZE,
         knn_k=max(10, SIZE),
-        use_ssl=args.url.startswith("https://"),
+        use_ssl=args.host.startswith("https://"),
     )
     kit = HybridKit(config)
-    wait_for_cluster(kit, args.timeout)
+    wait_for_opensearch(kit, url=args.host, timeout=args.timeout)
 
     kit.delete_index()
     kit.ensure_index(extra_properties={"title": {"type": "text"}})
     kit.upsert_pipeline()
-
-    seeded = []
-    for doc in DOCUMENTS:
-        body = dict(doc)
-        body["embedding"] = embed_text(f"{body['title']} {body['content']}", DIMENSION)
-        seeded.append(body)
-    kit.index_documents(seeded)
+    kit.index_documents(embed_documents(DOCUMENTS, DIMENSION))
 
     queries = [QUERIES[i % len(QUERIES)] for i in range(args.n_queries)]
     vectors = [embed_text(query, DIMENSION) for query in queries]

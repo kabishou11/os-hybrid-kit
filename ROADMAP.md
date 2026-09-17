@@ -50,6 +50,17 @@ Shipped on `0.5.0`: alias helpers and a light retriever timing script. Same froz
 - `HybridKit.with_index` so `config.index` can be an alias for zero-downtime reads
 - `examples/benchmark_retrievers.py` — BM25 vs kNN vs hybrid wall times on a fixed corpus (not an eval harness)
 
+## v0.5.x polish
+
+`0.5.x` is harden and DX, not a new subsystem. Neural Search and Dify marketplace stay unshipped.
+
+Shipped on `0.5.1`:
+
+- Reject empty / whitespace alias, index, and query strings on the facade before OpenSearch
+- Reject empty embeddings; keep dimension checks
+- README / examples / CONTRIBUTING aligned to the frozen API
+- Thin Makefile and credential-free `__repr__`
+
 Still optional / unshipped:
 
 - Dify marketplace plugin packaging

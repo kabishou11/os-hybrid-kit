@@ -14,6 +14,12 @@ from os_hybrid_kit.query import build_hybrid_query, build_knn_query, build_lexic
 from os_hybrid_kit.results import SearchResult, parse_search_response
 
 
+def _require_nonempty(value: str, label: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{label} must be a non-empty string")
+    return value
+
+
 def build_opensearch_client(config: HybridConfig) -> OpenSearch:
     kwargs: dict[str, Any] = {
         "hosts": list(config.hosts),
@@ -52,6 +58,12 @@ class HybridKit:
         self.config = config
         self.client = client if client is not None else build_opensearch_client(config)
 
+    def __repr__(self) -> str:
+        return (
+            f"HybridKit(index={self.config.index!r}, dimension={self.config.dimension}, "
+            f"fusion={self.config.fusion.value!r}, pipeline_name={self.config.pipeline_name!r})"
+        )
+
     def with_index(self, name: str) -> HybridKit:
         """Return a kit that targets ``name`` (index or alias), sharing this client.
 
@@ -59,10 +71,12 @@ class HybridKit:
         passing an alias here is the zero-downtime read path after ``put_alias``
         or ``swap_alias``.
         """
+        _require_nonempty(name, "index")
         return HybridKit(self.config.model_copy(update={"index": name}), client=self.client)
 
     def _target_index(self, index: str | None) -> str:
-        return self.config.index if index is None else index
+        name = self.config.index if index is None else index
+        return _require_nonempty(name, "index")
 
     def exists_index(self) -> bool:
         """Return True if the configured index exists."""
@@ -97,14 +111,17 @@ class HybridKit:
 
         Does not remove other targets; use ``swap_alias`` for cutover.
         """
+        _require_nonempty(alias, "alias")
         return self.client.indices.put_alias(index=self._target_index(index), name=alias)
 
     def delete_alias(self, alias: str, *, index: str | None = None) -> Any:
         """Remove ``alias`` from ``index`` (default ``config.index``)."""
+        _require_nonempty(alias, "alias")
         return self.client.indices.delete_alias(index=self._target_index(index), name=alias)
 
     def get_alias(self, alias: str) -> dict[str, Any]:
         """Resolve ``alias`` to OpenSearch's ``{index: {"aliases": {alias: ...}}}`` mapping."""
+        _require_nonempty(alias, "alias")
         return dict(self.client.indices.get_alias(name=alias))
 
     def swap_alias(
@@ -120,6 +137,10 @@ class HybridKit:
         (remove old + add new). When omitted, current targets are looked up
         first, then updated — still one write, but not a single round-trip.
         """
+        _require_nonempty(alias, "alias")
+        _require_nonempty(new_index, "index")
+        if old_index is not None:
+            _require_nonempty(old_index, "index")
         actions: list[dict[str, Any]] = []
         if old_index is not None:
             if old_index != new_index:
@@ -172,6 +193,7 @@ class HybridKit:
         extra_body: Mapping[str, Any] | None = None,
     ) -> SearchResult:
         """Run a BM25 ``match`` query. Does not use a search pipeline."""
+        _require_nonempty(query, "query")
         size = size if size is not None else self.config.size
         body = build_lexical_query(
             query,
@@ -227,6 +249,7 @@ class HybridKit:
         pipeline_name: str | None = None,
     ) -> SearchResult:
         """Run BM25 + kNN hybrid search through the configured search pipeline."""
+        _require_nonempty(query, "query")
         self._require_embedding(embedding)
         size = size if size is not None else self.config.size
         k = knn_k if knn_k is not None else max(self.config.knn_k, size)
@@ -250,9 +273,12 @@ class HybridKit:
         return parse_search_response(response)
 
     def _require_embedding(self, embedding: Sequence[float]) -> None:
-        if len(embedding) != self.config.dimension:
+        n = len(embedding)
+        if n == 0:
+            raise ValueError("embedding must be a non-empty sequence")
+        if n != self.config.dimension:
             raise ValueError(
-                f"embedding length {len(embedding)} does not match "
+                f"embedding length {n} does not match "
                 f"config.dimension {self.config.dimension}; use the same model "
                 "as at index time"
             )

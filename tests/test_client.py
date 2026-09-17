@@ -274,3 +274,105 @@ def test_with_index_shares_client_and_retargets_search():
     assert kit.config.index == "docs-v1"
     aliased.lexical_search("running shoes")
     assert client.searches[0]["index"] == "docs-read"
+
+
+@pytest.mark.parametrize("blank", ["", "  ", "\t"])
+def test_put_alias_rejects_blank_name(blank: str):
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=4, index="docs-v1"), client=client)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="alias must be a non-empty string"):
+        kit.put_alias(blank)
+    assert client.indices.put_alias_calls == []
+
+
+def test_put_alias_rejects_blank_index():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=4, index="docs-v1"), client=client)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="index must be a non-empty string"):
+        kit.put_alias("docs-read", index="  ")
+    assert client.indices.put_alias_calls == []
+
+
+@pytest.mark.parametrize("blank", ["", "  "])
+def test_delete_alias_rejects_blank_name(blank: str):
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=4, index="docs-v1"), client=client)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="alias must be a non-empty string"):
+        kit.delete_alias(blank)
+    assert client.indices.delete_alias_calls == []
+
+
+def test_get_alias_rejects_blank_name():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=4, index="docs-v1"), client=client)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="alias must be a non-empty string"):
+        kit.get_alias("")
+    assert client.indices.get_alias_calls == []
+
+
+def test_swap_alias_rejects_blank_alias_and_indexes():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=4, index="docs-v1"), client=client)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="alias must be a non-empty string"):
+        kit.swap_alias("  ", "docs-v2")
+    with pytest.raises(ValueError, match="index must be a non-empty string"):
+        kit.swap_alias("docs-read", "")
+    with pytest.raises(ValueError, match="index must be a non-empty string"):
+        kit.swap_alias("docs-read", "docs-v2", old_index=" ")
+    assert client.indices.update_aliases_calls == []
+    assert client.indices.get_alias_calls == []
+
+
+@pytest.mark.parametrize("blank", ["", "  "])
+def test_with_index_rejects_blank_name(blank: str):
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3, index="docs-v1"), client=client)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="index must be a non-empty string"):
+        kit.with_index(blank)
+    assert kit.config.index == "docs-v1"
+
+
+@pytest.mark.parametrize("blank", ["", "  ", "\n"])
+def test_lexical_search_rejects_blank_query_before_opensearch(blank: str):
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3), client=client)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="query must be a non-empty string"):
+        kit.lexical_search(blank)
+    assert client.searches == []
+
+
+@pytest.mark.parametrize("blank", ["", "  "])
+def test_hybrid_search_rejects_blank_query_before_opensearch(blank: str):
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3), client=client)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="query must be a non-empty string"):
+        kit.hybrid_search(blank, [0.1, 0.2, 0.3])
+    assert client.searches == []
+
+
+def test_knn_search_rejects_empty_embedding():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3), client=client)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="embedding must be a non-empty sequence"):
+        kit.knn_search([])
+    assert client.searches == []
+
+
+def test_hybrid_search_rejects_empty_embedding():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3), client=client)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="embedding must be a non-empty sequence"):
+        kit.hybrid_search("running shoes", [])
+    assert client.searches == []
+
+
+def test_kit_repr_omits_secrets():
+    kit = HybridKit(
+        HybridConfig(dimension=4, index="docs", username="admin", password="s3cret"),
+        client=FakeClient(),  # type: ignore[arg-type]
+    )
+    text = repr(kit)
+    assert "docs" in text
+    assert "s3cret" not in text
+    assert "admin" not in text
+    assert "password" not in text

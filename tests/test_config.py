@@ -78,6 +78,28 @@ def test_from_env_requires_dimension_from_env_or_kwargs(
 
 
 def test_version_and_public_exports() -> None:
-    assert os_hybrid_kit.__version__ == "0.5.0"
+    assert os_hybrid_kit.__version__ == "0.5.1"
     for name in os_hybrid_kit.__all__:
         assert hasattr(os_hybrid_kit, name)
+
+
+def test_config_repr_omits_credentials() -> None:
+    config = HybridConfig(
+        dimension=8,
+        index="docs",
+        username="admin",
+        password="s3cret",
+        pipeline_name="hybrid-search-pipeline",
+    )
+    text = repr(config)
+    assert "s3cret" not in text
+    assert "admin" not in text
+    assert "password" not in text
+    assert "docs" in text
+    assert "auth='set'" in text
+    assert config.username == "admin"
+
+
+def test_config_repr_auth_off_without_username() -> None:
+    config = HybridConfig(dimension=2, index="docs")
+    assert "auth='off'" in repr(config)
