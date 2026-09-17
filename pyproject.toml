@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "os-hybrid-kit"
-version = "0.3.0"
-description = "Portable OpenSearch hybrid search (BM25 + kNN + RRF / weighted normalization) with a thin Dify adapter."
+version = "0.4.0"
+description = "Portable OpenSearch hybrid search (BM25 + kNN + RRF / weighted normalization) with a thin Dify adapter and optional LangChain / LlamaIndex retrievers."
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Zhu Lei", email = "woicyou@gmail.com" }]
 requires-python = ">=3.10"
-keywords = ["opensearch", "hybrid-search", "bm25", "knn", "rrf", "dify"]
+keywords = ["opensearch", "hybrid-search", "bm25", "knn", "rrf", "dify", "langchain", "llama-index"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -32,6 +32,8 @@ dev = [
     "ruff>=0.6",
 ]
 dify = []
+langchain = ["langchain-core>=0.2"]
+llama-index = ["llama-index-core>=0.10"]
 
 [project.urls]
 Homepage = "https://github.com/kabishou11/os-hybrid-kit"
@@ -39,7 +41,7 @@ Issues = "https://github.com/kabishou11/os-hybrid-kit/issues"
 Changelog = "https://github.com/kabishou11/os-hybrid-kit/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
-packages = ["os_hybrid_kit", "adapters", "adapters.dify"]
+packages = ["os_hybrid_kit", "os_hybrid_kit.integrations", "adapters", "adapters.dify"]
 
 [tool.setuptools.package-dir]
 os_hybrid_kit = "src/os_hybrid_kit"

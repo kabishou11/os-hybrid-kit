@@ -34,15 +34,20 @@ Shipped on `0.3.0`: freeze the facade and write-up so the repo is CV-citable. Sa
 - `EmbedFn` protocol for query embedders (Dify adapter uses it)
 - README Stable API (0.3) note
 
-## v0.4+ (optional)
+## v0.4 extras
 
-Only if a real product needs them.
+Shipped on `0.4.0`: optional retriever wrappers. Same frozen facade; extras are not required.
 
-- LangChain / LlamaIndex retriever extras
+- LangChain `HybridKitRetriever` (`pip install os-hybrid-kit[langchain]`)
+- LlamaIndex `HybridKitRetriever` (`pip install os-hybrid-kit[llama-index]`)
+- [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)
+
+Still optional / unshipped:
+
 - Dify marketplace plugin packaging
 - Neural Search `neural` query (model hosted in OpenSearch)
 - Multi-index / alias helpers
-- Benchmarks vs BM25-only and kNN-only
+- Benchmarks vs BM25-only and kNN-only (see `examples/compare_retrievers.py`)
 
 ## Non-goals
 

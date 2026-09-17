@@ -8,6 +8,7 @@ Python 3.10 or newer.
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
+# optional retrievers: pip install -e ".[langchain,llama-index]"
 ```
 
 ## Checks

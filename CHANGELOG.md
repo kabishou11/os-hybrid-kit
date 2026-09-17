@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-17
+
+Optional retriever extras around the frozen v0.3 facade. No breaking renames.
+
+### Added
+
+- Optional extra `langchain` (`langchain-core>=0.2`) and `llama-index` (`llama-index-core>=0.10`)
+- `os_hybrid_kit.integrations.langchain.HybridKitRetriever` — LangChain `BaseRetriever` over `hybrid_search` / `lexical_search` / `knn_search`
+- `os_hybrid_kit.integrations.llama_index.HybridKitRetriever` — LlamaIndex retriever returning `NodeWithScore`
+- `InstallError` when an extra is missing at import
+- [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)
+
+### Changed
+
+- Package version `0.4.0`
+- `ROADMAP.md` marks LangChain / LlamaIndex extras as shipped
+
 ## [0.3.0] - 2026-09-17
 
 Resume-ready freeze of the v0.1 facade. No breaking renames.
