@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from os_hybrid_kit.client import HybridKit
 from os_hybrid_kit.results import SearchResult
-
-EmbedFn = Callable[[str], Sequence[float]]
+from os_hybrid_kit.types import EmbedFn
 
 
 class RetrievalSetting(BaseModel):

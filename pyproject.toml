@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "os-hybrid-kit"
-version = "0.2.0"
+version = "0.3.0"
 description = "Portable OpenSearch hybrid search (BM25 + kNN + RRF / weighted normalization) with a thin Dify adapter."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -36,6 +36,7 @@ dify = []
 [project.urls]
 Homepage = "https://github.com/kabishou11/os-hybrid-kit"
 Issues = "https://github.com/kabishou11/os-hybrid-kit/issues"
+Changelog = "https://github.com/kabishou11/os-hybrid-kit/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
 packages = ["os_hybrid_kit", "adapters", "adapters.dify"]
