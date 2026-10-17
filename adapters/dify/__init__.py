@@ -1,10 +1,15 @@
-"""Thin Dify adapter: External Knowledge ``/retrieval`` + a VDB stub.
+"""Deprecated import path. Use ``os_hybrid_kit.adapters.dify``.
 
-This is not a Dify marketplace plugin. Wire ``retrieve()`` to any HTTP
-framework, or call :class:`HybridVectorStore` from a plugin you maintain.
+This shim exists for source checkouts only. It is not included in the wheel.
 """
 
-from adapters.dify.retrieval import (
+from __future__ import annotations
+
+import warnings
+
+from os_hybrid_kit.adapters.dify import (
+    Document,
+    HybridVectorStore,
     KnowledgeRecord,
     RetrievalRequest,
     RetrievalResponse,
@@ -12,7 +17,12 @@ from adapters.dify.retrieval import (
     hits_to_records,
     retrieve,
 )
-from adapters.dify.vdb import Document, HybridVectorStore
+
+warnings.warn(
+    "adapters.dify is deprecated; import from os_hybrid_kit.adapters.dify",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 __all__ = [
     "Document",

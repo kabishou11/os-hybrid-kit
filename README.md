@@ -3,11 +3,13 @@
 Portable Python library for **OpenSearch hybrid search**: BM25 lexical match plus kNN vectors, fused with **RRF** or **weighted score normalization**.
 
 [![CI](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/kabishou11/os-hybrid-kit/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/os-hybrid-kit.svg)](https://pypi.org/project/os-hybrid-kit/)
+[![Python versions](https://img.shields.io/pypi/pyversions/os-hybrid-kit.svg)](https://pypi.org/project/os-hybrid-kit/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/kabishou11/os-hybrid-kit/blob/main/LICENSE)
 
-**v0.5.3** — facade frozen; 0.5.x is polish and hardening. You bring the embedding model; the kit builds the mapping, upserts the search pipeline, and runs hybrid search.
+**v0.5.4** — facade frozen; 0.5.x is polish and hardening. You bring the embedding model; the kit builds the mapping, upserts the search pipeline, and runs hybrid search.
 
-[CHANGELOG](CHANGELOG.md) · [Production checklist](docs/PRODUCTION.md) · [Relevance and latency notes](docs/NOTES.md) · [Integrations](docs/INTEGRATIONS.md) · [Roadmap](ROADMAP.md)
+[CHANGELOG](https://github.com/kabishou11/os-hybrid-kit/blob/main/CHANGELOG.md) · [Production checklist](https://github.com/kabishou11/os-hybrid-kit/blob/main/docs/PRODUCTION.md) · [Relevance and latency notes](https://github.com/kabishou11/os-hybrid-kit/blob/main/docs/NOTES.md) · [Integrations](https://github.com/kabishou11/os-hybrid-kit/blob/main/docs/INTEGRATIONS.md) · [Roadmap](https://github.com/kabishou11/os-hybrid-kit/blob/main/ROADMAP.md)
 
 ## Why
 
@@ -15,9 +17,11 @@ Keyword scores (BM25) and vector similarity live on different scales. Adding the
 
 ## Install and 5-minute quickstart
 
-Python 3.10+. Docker for the demo cluster. No PyPI release yet.
+Python 3.10+. Docker for the demo cluster.
 
 ```bash
+python -m pip install os-hybrid-kit
+# from source:
 python -m pip install git+https://github.com/kabishou11/os-hybrid-kit.git
 # or from a clone:
 python -m pip install -e .
@@ -190,16 +194,16 @@ retriever = HybridKitRetriever(kit, embed_fn, search_kwargs={"size": 10})
 nodes = retriever.retrieve("waterproof trail shoes")
 ```
 
-Importing a submodule without its extra raises `os_hybrid_kit.integrations.InstallError`. Details: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
+Importing a submodule without its extra raises `os_hybrid_kit.integrations.InstallError`. Details: [docs/INTEGRATIONS.md](https://github.com/kabishou11/os-hybrid-kit/blob/main/docs/INTEGRATIONS.md).
 
 ## Dify adapter
 
-`adapters/dify/` is a stub, not a marketplace plugin.
+`os_hybrid_kit.adapters.dify` (`src/os_hybrid_kit/adapters/dify/`) is a stub, not a marketplace plugin. Source checkouts can still import `adapters.dify`; that path warns and is not included in the wheel.
 
 - **External knowledge:** `retrieve(kit, request, embed_fn)` accepts Dify's `POST /retrieval` JSON and returns `{ "records": [ { content, score, title, metadata } ] }`. Dify only sends text, so you pass an `EmbedFn`.
 - **VDB stub:** `HybridVectorStore` exposes `add_texts`, `hybrid_search`, `search_by_vector`, and `search_by_full_text` for a plugin you maintain.
 
-RRF scores are small (they are sums of `1 / (rank_constant + rank)`). If Dify's score threshold is `0.5`, RRF hits will be filtered out. Use threshold `0` with RRF, or switch to weighted fusion (scores are typically in `[0, 1]`). Details: [docs/PRODUCTION.md](docs/PRODUCTION.md).
+RRF scores are small (they are sums of `1 / (rank_constant + rank)`). If Dify's score threshold is `0.5`, RRF hits will be filtered out. Use threshold `0` with RRF, or switch to weighted fusion (scores are typically in `[0, 1]`). Details: [docs/PRODUCTION.md](https://github.com/kabishou11/os-hybrid-kit/blob/main/docs/PRODUCTION.md).
 
 ## Tests
 
@@ -228,4 +232,4 @@ Live tests skip unless `RUN_INTEGRATION=1`. Default URL is `OPENSEARCH_URL` or `
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](https://github.com/kabishou11/os-hybrid-kit/blob/main/LICENSE).
