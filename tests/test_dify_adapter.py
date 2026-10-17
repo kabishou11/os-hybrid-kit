@@ -1,17 +1,20 @@
 from __future__ import annotations
 
+import importlib
+import sys
+from pathlib import Path
 from typing import Any
 
 import pytest
-from adapters.dify import (
+
+from os_hybrid_kit import HybridConfig, HybridKit, parse_search_response
+from os_hybrid_kit.adapters.dify import (
     HybridVectorStore,
     RetrievalRequest,
     RetrievalSetting,
     hits_to_records,
     retrieve,
 )
-
-from os_hybrid_kit import HybridConfig, HybridKit, parse_search_response
 
 
 class FakeClient:
@@ -114,6 +117,32 @@ def test_vdb_search_by_vector_uses_knn_search():
     assert knn["vector"] == [0.5, 0.5]
     assert search["body"]["size"] == 2
     assert docs[0].page_content == "Dify retrieves external chunks."
+
+
+def test_legacy_adapters_dify_import_warns() -> None:
+    # Pytest puts tests/ on sys.path, not the checkout root. The deprecated
+    # shim is a source-tree path, so add that root for this import only.
+    root = Path(__file__).resolve().parents[1]
+    shim = root / "adapters" / "dify" / "__init__.py"
+    if not shim.is_file():
+        pytest.importorskip("adapters.dify")
+
+    root_s = str(root)
+    added = root_s not in sys.path
+    if added:
+        sys.path.insert(0, root_s)
+    sys.modules.pop("adapters.dify", None)
+    sys.modules.pop("adapters", None)
+    try:
+        with pytest.warns(DeprecationWarning, match="os_hybrid_kit.adapters.dify"):
+            legacy = importlib.import_module("adapters.dify")
+    finally:
+        if added:
+            sys.path.remove(root_s)
+
+    assert Path(legacy.__file__).resolve() == shim.resolve()
+    assert legacy.retrieve is retrieve
+    assert legacy.HybridVectorStore is HybridVectorStore
 
 
 def test_vdb_search_by_full_text_uses_lexical_search():

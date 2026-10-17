@@ -1,26 +1,31 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "os-hybrid-kit"
-version = "0.5.3"
+version = "0.5.4"
 description = "Portable OpenSearch hybrid search (BM25 + kNN + RRF / weighted normalization) with a thin Dify adapter and optional LangChain / LlamaIndex retrievers."
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Zhu Lei", email = "woicyou@gmail.com" }]
 requires-python = ">=3.10"
 keywords = ["opensearch", "hybrid-search", "bm25", "knn", "rrf", "dify", "langchain", "llama-index"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+    "Topic :: Database",
     "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Indexing",
 ]
 dependencies = [
     "opensearch-py>=2.6,<4",
@@ -41,13 +46,11 @@ llama-index = ["llama-index-core>=0.10"]
 Homepage = "https://github.com/kabishou11/os-hybrid-kit"
 Issues = "https://github.com/kabishou11/os-hybrid-kit/issues"
 Changelog = "https://github.com/kabishou11/os-hybrid-kit/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/kabishou11/os-hybrid-kit#readme"
+Source = "https://github.com/kabishou11/os-hybrid-kit"
 
-[tool.setuptools]
-packages = ["os_hybrid_kit", "os_hybrid_kit.integrations", "adapters", "adapters.dify"]
-
-[tool.setuptools.package-dir]
-os_hybrid_kit = "src/os_hybrid_kit"
-adapters = "adapters"
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.package-data]
 os_hybrid_kit = ["py.typed"]

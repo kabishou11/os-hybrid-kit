@@ -90,7 +90,7 @@ def test_pipeline_name_rejects_blank(blank: str) -> None:
 
 
 def test_version_and_public_exports() -> None:
-    assert os_hybrid_kit.__version__ == "0.5.3"
+    assert os_hybrid_kit.__version__ == "0.5.4"
     for name in os_hybrid_kit.__all__:
         assert hasattr(os_hybrid_kit, name)
 

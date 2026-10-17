@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-10-17
+
+First PyPI-ready packaging. The public facade is unchanged.
+
+### Changed
+
+- Package version `0.5.4`
+- Dify adapter moved to `os_hybrid_kit.adapters.dify`. Source checkouts keep a deprecated `adapters.dify` shim; it is not included in the wheel
+- SPDX license metadata (`MIT`, `license-files`); the OSI license classifier is removed
+- Extra classifiers and project URLs (Documentation, Source)
+- README links are absolute; install is `python -m pip install os-hybrid-kit`
+
 ## [0.5.3] - 2026-09-17
 
 Harden and DX polish on the frozen v0.5 facade. No breaking renames.

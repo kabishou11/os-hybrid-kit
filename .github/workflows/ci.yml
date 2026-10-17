@@ -59,3 +59,22 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose down -v
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tools
+        run: python -m pip install build twine
+      - name: Build
+        run: python -m build
+      - name: Check distributions
+        run: twine check --strict dist/*
+      - name: Install the wheel and import
+        run: |
+          python -m venv /tmp/ohk-wheel
+          /tmp/ohk-wheel/bin/python -m pip install dist/*.whl
+          /tmp/ohk-wheel/bin/python -c "import os_hybrid_kit, os_hybrid_kit.adapters.dify; print(os_hybrid_kit.__version__)"
