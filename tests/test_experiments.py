@@ -7,6 +7,7 @@ from math import log2
 import pytest
 
 from os_hybrid_kit.experiments import (
+    EPSILON,
     build_run_list,
     dense_only,
     fusion_tax,
@@ -249,3 +250,121 @@ def test_cli_prints_real_numbers_and_synthetic_disclaimer(capsys) -> None:
 def test_config_names_are_unique() -> None:
     names: Sequence[str] = [item.name for item in default_configs()]
     assert len(names) == len(set(names))
+
+
+def test_eq2_rank_kernel_endpoint_values_and_missing_rank() -> None:
+    # Eq. (2): rho(r; kappa) = 1/(kappa + r), ranks start at 1.
+    # Dense-only RRF (weights (1, 0)) isolates one list: a/b are dense ranks
+    # 1/2 -> 1/21 and 1/22; "e" is absent from dense so rank_of yields
+    # k + 1 = 5 -> rho = 1/(20 + 5) = 1/25.
+    query = query_from_pairs(
+        "q",
+        [("a", 4.0), ("b", 3.0), ("c", 2.0), ("d", 1.0)],
+        [("e", 1.0)],
+        {},
+    )
+    scores = rrf(query, k=4, rank_constant=20, weights=(1.0, 0.0))
+    assert scores["a"] == pytest.approx(1.0 / 21.0)
+    assert scores["b"] == pytest.approx(1.0 / 22.0)
+    assert scores["e"] == pytest.approx(1.0 / 25.0)
+
+
+def test_eq1_min_max_two_score_list_pins_epsilon() -> None:
+    # Eq. (1): s~(d) = (s - min)/(max - min + eps); with {0, 10} the
+    # denominator is 10 + 1e-8, so the top score is strictly below 1.
+    assert EPSILON == 1e-8
+    scores = min_max_scores(build_run_list([("low", 0.0), ("high", 10.0)]))
+    assert scores["low"] == 0.0
+    assert scores["high"] == 10.0 / (10.0 + EPSILON)
+    assert scores["high"] < 1.0
+
+
+def test_eq3_rank_score_mix_hand_computed_utilities() -> None:
+    # Inputs (k=3 -> a missing doc has rank k+1=4; kappa=2; alpha=0.8;
+    # lambda=0.75):
+    #   dense   : a=3 (rank 1), b=1 (rank 2), c missing
+    #   lexical : c=5 (rank 1), b=2 (rank 2), a missing
+    # Eq. (1): s~dense(a)=2/(2+eps), s~dense(b)=0,
+    #          s~lex(c)=3/(3+eps), s~lex(b)=0; missing docs get 0.
+    # Eq. (2): rho(1;2)=1/3, rho(2;2)=1/4, rho(4;2)=1/6.
+    # Eq. (3): u = 0.75*(0.8*s~d + 0.2*s~s) + 0.25*(0.8*rho(rd) + 0.2*rho(rs)).
+    #   u(a) = 0.75*(0.8*2/(2+eps)) + 0.25*(0.8/3 + 0.2/6) ~= 0.675
+    #   u(b) = 0.25*(0.8/4 + 0.2/4) = 0.0625
+    #   u(c) = 0.75*(0.2*3/(3+eps)) + 0.25*(0.8/6 + 0.2/3) ~= 0.2
+    query = query_from_pairs(
+        "q",
+        [("a", 3.0), ("b", 1.0)],
+        [("c", 5.0), ("b", 2.0)],
+        {},
+    )
+    utilities = rank_score_mix(query, k=3, alpha=0.8, lam=0.75, kappa=2.0)
+    expected = {
+        "a": 0.75 * (0.8 * (2.0 / (2.0 + EPSILON))) + 0.25 * (0.8 / 3.0 + 0.2 / 6.0),
+        "b": 0.25 * (0.8 / 4.0 + 0.2 / 4.0),
+        "c": 0.75 * (0.2 * (3.0 / (3.0 + EPSILON))) + 0.25 * (0.8 / 6.0 + 0.2 / 3.0),
+    }
+    assert utilities == pytest.approx(expected, rel=1e-12)
+    assert utilities["b"] == pytest.approx(0.0625)
+
+
+@pytest.mark.parametrize("alpha", [0.0, 0.8, 1.0])
+def test_eq3_lambda_endpoints_equal_weighted_baselines(alpha: float) -> None:
+    # lambda=0 drops the score term, leaving alpha*rho_d + (1-alpha)*rho_s,
+    # i.e. weighted RRF with weights (alpha, 1-alpha). lambda=1 drops the
+    # rank term, leaving weighted min-max CombSUM with vector_weight=alpha.
+    query = query_from_pairs(
+        "endpoints",
+        [("a", 5.0), ("b", 3.0), ("c", 1.0)],
+        [("b", 9.0), ("d", 4.0)],
+        {},
+    )
+    assert rank_score_mix(query, k=4, alpha=alpha, lam=0.0, kappa=2.0) == pytest.approx(
+        rrf(query, k=4, rank_constant=2, weights=(alpha, 1.0 - alpha))
+    )
+    assert rank_score_mix(query, k=4, alpha=alpha, lam=1.0, kappa=2.0) == pytest.approx(
+        weighted_fusion(query, k=4, lexical_weight=1.0 - alpha, vector_weight=alpha)
+    )
+
+
+def test_graded_ndcg_and_mrr_hand_computed() -> None:
+    # Gains 2 ("p") and 1 ("q"); discount is 1/log2(rank+1).
+    # Ranking ["z", "q", "p"]: DCG = 1/log2(3) + 2/log2(4) = 1/log2(3) + 1.
+    # Ideal DCG = 2/log2(2) + 1/log2(3) = 2 + 1/log2(3).
+    qrels = {"p": 2, "q": 1, "z": 0}
+    ranked = ["z", "q", "p"]
+    expected = (1.0 / log2(3) + 2.0 / log2(4)) / (2.0 / log2(2) + 1.0 / log2(3))
+    assert ndcg_at_k(ranked, qrels, 3) == pytest.approx(expected)
+    assert mrr_at_k(ranked, qrels, 3) == 0.5
+    assert ndcg_at_k(["p", "q", "z"], qrels, 3) == pytest.approx(1.0)
+
+
+def test_fusion_tax_zero_and_positive_from_real_rankings() -> None:
+    match = query_from_pairs(
+        "match", [("a", 3.0), ("b", 1.0)], [("b", 2.0), ("a", 1.0)], {"a": 1}
+    )
+    hurt = query_from_pairs(
+        "hurt", [("bad", 100.0), ("a", 1.0)], [("a", 2.0), ("bad", 1.0)], {"a": 1}
+    )
+    queries = (match, hurt)
+    fused: dict[str, float] = {}
+    lexical: dict[str, float] = {}
+    dense: dict[str, float] = {}
+    for query in queries:
+        fused[query.query_id] = ndcg_at_k(
+            rank_by_score(rank_score_mix(query, k=2, alpha=0.8, lam=0.75, kappa=2.0)),
+            query.qrels,
+            1,
+        )
+        lexical[query.query_id] = ndcg_at_k(
+            rank_by_score(lexical_only(query, k=2)), query.qrels, 1
+        )
+        dense[query.query_id] = ndcg_at_k(rank_by_score(dense_only(query, k=2)), query.qrels, 1)
+    report = fusion_tax(queries, fused, lexical, dense)
+    # "match": dense ranks "a" first and fusion reproduces it -> max(1, 0) - 1 = 0.
+    assert report.rows[0].tax == pytest.approx(0.0)
+    assert report.rows[0].hurts is False
+    # "hurt": dense outlier "bad" (100.0) compresses min-max; fusion ranks it
+    # first -> max(0, 1) - 0 = 1. Synthetic only, not a retrieval claim.
+    assert report.rows[1].tax == pytest.approx(1.0)
+    assert report.rows[1].hurts is True
+    assert report.oracle_tax_rate == pytest.approx(0.5)
