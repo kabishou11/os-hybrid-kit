@@ -1,0 +1,42 @@
+{
+  "name": "synthetic_loss: outlier and weak dense list make rank-score mix lose to RRF and lexical",
+  "synthetic": true,
+  "list_depth_k": 4,
+  "metric_cutoff": 3,
+  "sweep": true,
+  "note": "SYNTHETIC failure boundary: no real retrieval claim. q1 dense score 100.0 is a non-relevant outlier that compresses min-max; Eq. (3) with alpha=0.8/lambda=0.75 puts it first and loses to equal RRF and lexical-only (positive fusion tax).",
+  "queries": [
+    {
+      "query_id": "q1",
+      "dense": [
+        {"doc_id": "O", "score": 100.0},
+        {"doc_id": "R2", "score": 0.95},
+        {"doc_id": "R1", "score": 0.90},
+        {"doc_id": "X", "score": 0.60}
+      ],
+      "lexical": [
+        {"doc_id": "R1", "score": 0.90},
+        {"doc_id": "R2", "score": 0.80},
+        {"doc_id": "B", "score": 0.70},
+        {"doc_id": "X", "score": 0.50}
+      ],
+      "qrels": {"R1": 1, "R2": 1}
+    },
+    {
+      "query_id": "q2",
+      "dense": [
+        {"doc_id": "C1", "score": 0.95},
+        {"doc_id": "C2", "score": 0.90},
+        {"doc_id": "C3", "score": 0.50},
+        {"doc_id": "C4", "score": 0.40}
+      ],
+      "lexical": [
+        {"doc_id": "C2", "score": 0.95},
+        {"doc_id": "C1", "score": 0.90},
+        {"doc_id": "C4", "score": 0.50},
+        {"doc_id": "C3", "score": 0.40}
+      ],
+      "qrels": {"C1": 1, "C2": 1}
+    }
+  ]
+}

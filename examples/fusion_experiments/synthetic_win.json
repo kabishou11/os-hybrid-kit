@@ -1,0 +1,42 @@
+{
+  "name": "synthetic_win: dense-heavy rank-score mix lifts a designed relevant doc above equal RRF",
+  "synthetic": true,
+  "list_depth_k": 4,
+  "metric_cutoff": 3,
+  "sweep": false,
+  "note": "SYNTHETIC fixture: mathematical demonstration only; no real retrieval gain is claimed. q1 designed so dense ranks relevant X first while lexical omits it; equal RRF ranks X third, Eq. (3) with dense-heavy alpha ranks X first.",
+  "queries": [
+    {
+      "query_id": "q1",
+      "dense": [
+        {"doc_id": "X", "score": 0.95},
+        {"doc_id": "Z", "score": 0.80},
+        {"doc_id": "A", "score": 0.60},
+        {"doc_id": "Y", "score": 0.40}
+      ],
+      "lexical": [
+        {"doc_id": "Y", "score": 0.90},
+        {"doc_id": "Z", "score": 0.85},
+        {"doc_id": "C", "score": 0.70},
+        {"doc_id": "A", "score": 0.50}
+      ],
+      "qrels": {"X": 1, "Z": 1}
+    },
+    {
+      "query_id": "q2",
+      "dense": [
+        {"doc_id": "P", "score": 0.90},
+        {"doc_id": "Q", "score": 0.80},
+        {"doc_id": "R", "score": 0.70},
+        {"doc_id": "S", "score": 0.60}
+      ],
+      "lexical": [
+        {"doc_id": "Q", "score": 0.90},
+        {"doc_id": "R", "score": 0.80},
+        {"doc_id": "S", "score": 0.70},
+        {"doc_id": "P", "score": 0.40}
+      ],
+      "qrels": {"P": 1}
+    }
+  ]
+}
