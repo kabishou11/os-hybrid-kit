@@ -10,7 +10,7 @@ The public facade is `HybridKit`, `HybridConfig`, `FusionMethod`, `Hit`, and `Se
 - [ ] Every indexed document's vector field has that same length.
 - [ ] Query vectors passed to `hybrid_search` / `knn_search` come from the **same model** as index time.
 
-`HybridKit` raises `ValueError` when a **query** vector length does not match `config.dimension`. Bulk `index_documents` does not pre-check vectors; OpenSearch rejects a `knn_vector` whose length does not match the mapping.
+`HybridKit` raises `ValueError` when a **query** vector is empty, has the wrong length, or contains a non-finite or non-numeric component. `index_documents` applies the same checks to a document's vector field when that field is present, before the bulk request. Documents may still omit the vector field. OpenSearch will also reject a `knn_vector` whose length does not match the mapping if you index through another path.
 
 Changing dimension requires a new index. `ensure_index` will not alter an existing mapping.
 

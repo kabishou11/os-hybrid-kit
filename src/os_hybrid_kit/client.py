@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
+from numbers import Real
 from typing import Any
 
 from opensearchpy import OpenSearch
@@ -18,6 +20,21 @@ def _require_nonempty(value: str, label: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{label} must be a non-empty string")
     return value
+
+
+def _require_positive_int(value: int, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError(f"{label} must be an integer >= 1")
+    return value
+
+
+def _is_finite_number(value: Any) -> bool:
+    if isinstance(value, bool) or not isinstance(value, Real):
+        return False
+    try:
+        return math.isfinite(float(value))
+    except (TypeError, ValueError, OverflowError):
+        return False
 
 
 class AliasNotFoundError(ValueError):
@@ -193,11 +210,26 @@ class HybridKit:
         id_field: str = "_id",
         refresh: bool = True,
     ) -> tuple[int, list[Any]]:
-        """Bulk-index documents. Each doc may include ``_id`` (popped, not stored)."""
+        """Bulk-index documents. Each doc may include ``_id`` (popped, not stored).
+
+        Documents may omit the vector field (lexical-only rows). When the
+        configured vector field is present, its length must match
+        ``config.dimension`` and every component must be a finite number.
+        """
+        if isinstance(documents, (str, bytes)) or isinstance(documents, Mapping):
+            raise ValueError("documents must be a sequence of mappings, not a single mapping")
         actions: list[dict[str, Any]] = []
-        for document in documents:
+        vector_field = self.config.vector_field
+        for index, document in enumerate(documents):
+            if not isinstance(document, Mapping):
+                raise ValueError(f"documents[{index}] must be a mapping")
             payload = dict(document)
             doc_id = payload.pop(id_field, None)
+            if vector_field in payload:
+                self._require_embedding(
+                    payload[vector_field],
+                    label=f"documents[{index}] field {vector_field!r}",
+                )
             action: dict[str, Any] = {"_index": self.config.index, "_source": payload}
             if doc_id is not None:
                 action["_id"] = doc_id
@@ -216,7 +248,9 @@ class HybridKit:
     ) -> SearchResult:
         """Run a BM25 ``match`` query. Does not use a search pipeline."""
         _require_nonempty(query, "query")
-        size = size if size is not None else self.config.size
+        size = _require_positive_int(
+            size if size is not None else self.config.size, "size"
+        )
         body = build_lexical_query(
             query,
             text_field=self.config.text_field,
@@ -242,8 +276,12 @@ class HybridKit:
     ) -> SearchResult:
         """Run a raw ``knn`` query. Does not use a search pipeline."""
         self._require_embedding(embedding)
-        size = size if size is not None else self.config.size
-        k = knn_k if knn_k is not None else max(self.config.knn_k, size)
+        size = _require_positive_int(
+            size if size is not None else self.config.size, "size"
+        )
+        k = _require_positive_int(
+            knn_k if knn_k is not None else max(self.config.knn_k, size), "knn_k"
+        )
         body = build_knn_query(
             embedding,
             vector_field=self.config.vector_field,
@@ -273,8 +311,12 @@ class HybridKit:
         """Run BM25 + kNN hybrid search through the configured search pipeline."""
         _require_nonempty(query, "query")
         self._require_embedding(embedding)
-        size = size if size is not None else self.config.size
-        k = knn_k if knn_k is not None else max(self.config.knn_k, size)
+        size = _require_positive_int(
+            size if size is not None else self.config.size, "size"
+        )
+        k = _require_positive_int(
+            knn_k if knn_k is not None else max(self.config.knn_k, size), "knn_k"
+        )
         body = build_hybrid_query(
             query,
             embedding,
@@ -294,16 +336,28 @@ class HybridKit:
         )
         return parse_search_response(response)
 
-    def _require_embedding(self, embedding: Sequence[float]) -> None:
-        n = len(embedding)
+    def _require_embedding(
+        self, embedding: Sequence[float], *, label: str = "embedding"
+    ) -> None:
+        if isinstance(embedding, (str, bytes)):
+            raise ValueError(f"{label} must be a non-empty sequence")
+        try:
+            n = len(embedding)
+        except TypeError as exc:
+            raise ValueError(f"{label} must be a non-empty sequence") from exc
         if n == 0:
-            raise ValueError("embedding must be a non-empty sequence")
+            raise ValueError(f"{label} must be a non-empty sequence")
         if n != self.config.dimension:
             raise ValueError(
-                f"embedding length {n} does not match "
+                f"{label} length {n} does not match "
                 f"config.dimension {self.config.dimension}; use the same model "
                 "as at index time"
             )
+        for i, value in enumerate(embedding):
+            if not _is_finite_number(value):
+                raise ValueError(
+                    f"{label} contains a non-finite or non-numeric value at index {i}"
+                )
 
     def _source_excludes(
         self, source_excludes: Sequence[str] | None
