@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `knn_search` / `hybrid_search` reject non-finite or non-numeric query vectors (`NaN`, `Inf`, strings) with `ValueError` before calling OpenSearch
+- `index_documents` pre-checks a document's vector field when present (length and finite numeric components) and rejects a single mapping passed instead of a sequence, before bulk
+- Search methods reject `size` / `knn_k` values below 1 before calling OpenSearch
+
 ## [0.5.4] - 2026-10-17
 
 First PyPI-ready packaging. The public facade is unchanged.

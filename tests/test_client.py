@@ -481,3 +481,111 @@ def test_kit_repr_omits_secrets():
     assert "s3cret" not in text
     assert "admin" not in text
     assert "password" not in text
+
+
+def _bulk_must_not_run(*_args: Any, **_kwargs: Any) -> tuple[int, list[Any]]:
+    raise AssertionError("bulk should not be called for invalid documents")
+
+
+@pytest.mark.parametrize(
+    "embedding",
+    [
+        [0.1, float("nan"), 0.3],
+        [0.1, float("inf"), 0.3],
+        [0.1, float("-inf"), 0.3],
+        [0.1, "0.2", 0.3],
+        [0.1, None, 0.3],
+        [0.1, [0.2], 0.3],
+    ],
+)
+def test_knn_search_rejects_nonfinite_or_non_numeric_embedding(embedding: list[Any]):
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3), client=client)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="non-finite or non-numeric"):
+        kit.knn_search(embedding)
+    assert client.searches == []
+
+
+def test_hybrid_search_rejects_nan_embedding_before_opensearch():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3), client=client)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="non-finite or non-numeric"):
+        kit.hybrid_search("running shoes", [0.1, float("nan"), 0.3])
+    assert client.searches == []
+
+
+def test_knn_search_rejects_string_as_embedding_even_if_length_matches():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3), client=client)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="embedding must be a non-empty sequence"):
+        kit.knn_search("abc")  # type: ignore[arg-type]
+    assert client.searches == []
+
+
+def test_knn_search_accepts_integer_components():
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3), client=client)  # type: ignore[arg-type]
+    result = kit.knn_search([1, 0, -2])
+    assert result.hits[0].id == "1"
+    assert client.searches[0]["body"]["query"]["knn"]["embedding"]["vector"] == [1, 0, -2]
+
+
+def test_index_documents_rejects_wrong_vector_length_before_bulk(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("os_hybrid_kit.client.bulk", _bulk_must_not_run)
+    kit = HybridKit(HybridConfig(dimension=2, index="docs"), client=FakeClient())  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match=r"documents\[0\].*length 1 does not match"):
+        kit.index_documents([{"_id": "doc-1", "content": "hello", "embedding": [0.1]}])
+
+
+@pytest.mark.parametrize(
+    "vector",
+    [[0.1, float("nan")], [float("inf"), 0.2], [0.1, "0.2"], None, "ab"],
+)
+def test_index_documents_rejects_bad_vector_field_before_bulk(
+    monkeypatch: pytest.MonkeyPatch, vector: Any
+) -> None:
+    monkeypatch.setattr("os_hybrid_kit.client.bulk", _bulk_must_not_run)
+    kit = HybridKit(HybridConfig(dimension=2, index="docs"), client=FakeClient())  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match=r"documents\[0\]"):
+        kit.index_documents([{"content": "hello", "embedding": vector}])
+
+
+def test_index_documents_rejects_mixed_batch_before_any_bulk(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("os_hybrid_kit.client.bulk", _bulk_must_not_run)
+    kit = HybridKit(HybridConfig(dimension=2, index="docs"), client=FakeClient())  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match=r"documents\[1\].*length 3 does not match"):
+        kit.index_documents(
+            [
+                {"_id": "ok", "content": "hello", "embedding": [0.1, 0.2]},
+                {"_id": "bad", "content": "oops", "embedding": [0.1, 0.2, 0.3]},
+            ]
+        )
+
+
+def test_index_documents_rejects_single_mapping(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("os_hybrid_kit.client.bulk", _bulk_must_not_run)
+    kit = HybridKit(HybridConfig(dimension=2, index="docs"), client=FakeClient())  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="sequence of mappings"):
+        kit.index_documents({"_id": "1", "content": "hello", "embedding": [0.1, 0.2]})  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("size", [0, -1])
+def test_lexical_search_rejects_non_positive_size(size: int):
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3), client=client)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="size must be an integer >= 1"):
+        kit.lexical_search("running shoes", size=size)
+    assert client.searches == []
+
+
+@pytest.mark.parametrize("knn_k", [0, -1])
+def test_knn_search_rejects_non_positive_knn_k(knn_k: int):
+    client = FakeClient()
+    kit = HybridKit(HybridConfig(dimension=3), client=client)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="knn_k must be an integer >= 1"):
+        kit.knn_search([0.1, 0.2, 0.3], knn_k=knn_k)
+    assert client.searches == []
